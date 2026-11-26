@@ -24,6 +24,8 @@ h2{font-size:32px;text-wrap:balance}h3{font-size:20px}
 header{background:var(--g);color:#fff;position:sticky;top:0;z-index:5}
 .bar{max-width:1100px;margin:auto;display:flex;align-items:center;gap:6px;padding:8px 16px;flex-wrap:wrap}
 .brand{font:700 20px "Inter Tight",sans-serif;margin-right:auto;color:#e6f5c8}
+.logo-row{display:flex;gap:16px;align-items:center;margin-bottom:14px;flex-wrap:wrap}.logo-prev{max-width:200px;max-height:80px;border:1px solid var(--line);border-radius:8px;padding:4px;background:#fff}.logo-prev.empty{padding:22px 16px;color:var(--mut);font-size:13px;background:transparent}
+summary{cursor:pointer;min-height:32px}
 .ghs{font:500 13px Inter,sans-serif;color:#cfe3d9;margin-left:8px;white-space:nowrap}.ghs.err{color:#ffb4a6}.ghs.ok{color:#e6f5c8}
 nav{display:flex;gap:4px;flex-wrap:wrap}
 nav button{background:transparent;color:#fff;border:0;padding:10px 12px;border-radius:8px;font:600 15px Inter,sans-serif;cursor:pointer;min-height:44px}
@@ -79,7 +81,7 @@ table.list{width:100%;border-collapse:collapse}
 @media(prefers-reduced-motion:reduce){.toast{transition:none}}
 /* stampa */
 #print{display:none}
-@media print{header,main,.foot,.toast,.modal{display:none!important}#print{display:block;color:#000;font:11pt/1.4 Inter,Arial,sans-serif}body{background:#fff}
+@media print{.p-logo{max-height:70px;max-width:220px;display:block;margin-bottom:6px}header,main,.foot,.toast,.modal{display:none!important}#print{display:block;color:#000;font:11pt/1.4 Inter,Arial,sans-serif}body{background:#fff}
 .p-head{display:flex;justify-content:space-between;gap:24px;margin-bottom:24px}.p-head h1{font-size:20pt;margin:0}
 .p-box{border:1px solid #999;padding:10px;border-radius:6px;min-width:45%}
 .p-tab{width:100%;border-collapse:collapse;margin:16px 0}.p-tab th,.p-tab td{border-bottom:1px solid #bbb;padding:6px 4px;text-align:left}.p-tab .n{text-align:right;white-space:nowrap}
@@ -88,7 +90,7 @@ table.list{width:100%;border-collapse:collapse}
 </style>
 </head>
 <body>
-<header><div class="bar"><div class="brand">Preventivi Facili <span id="ghs" class="ghs"></span></div>
+<header><div class="bar"><div class="brand"><span id="bn">Preventivi Facili</span> <span id="ghs" class="ghs"></span></div>
 <nav>
 <button data-v="list">Preventivi</button>
 <button data-v="new" class="new">+ Nuovo preventivo</button>
@@ -124,7 +126,7 @@ function ghStatus(t,cls){const el=document.getElementById('ghs');if(el){el.textC
 function ghApi(method,body){return fetch(`https://api.github.com/repos/${encodeURIComponent(gh.owner)}/${encodeURIComponent(gh.repo)}/contents/${ghPath()}`+(method==='GET'?`?ref=${encodeURIComponent(gh.branch||'main')}&t=${Date.now()}`:''),
   {method,cache:'no-store',headers:{Authorization:'Bearer '+gh.token,Accept:'application/vnd.github+json'},body:body?JSON.stringify(body):undefined})}
 async function ghRead(){const r=await ghApi('GET');if(r.status===404)return null;
-  if(!r.ok)throw new Error(r.status===401?'Token non valido o scaduto':r.status===403?'Il token non ha il permesso di accedere al repository':'Errore GitHub '+r.status);
+  if(!r.ok)throw new Error(r.status===401?'Token non valido o scaduto: chiedi un nuovo link a chi ti ha dato l\'app':r.status===403?'Il token non ha il permesso di accedere al repository':'Errore GitHub '+r.status);
   const j=await r.json();if(!j.content&&j.size)throw new Error('File dati troppo grande (oltre 1 MB)');return{sha:j.sha,data:JSON.parse(b64d(j.content||'')||'{}')}}
 const fixDb=d=>{const b=blank();return{...b,...d,settings:{...b.settings,...(d.settings||{})}}};
 const mergeById=(a=[],b=[])=>{const m=new Map(b.map(x=>[x.id,x]));a.forEach(x=>m.set(x.id,x));return[...m.values()]};
@@ -137,9 +139,34 @@ async function ghPush(first){if(ghBusy){ghAgain=true;return true}ghBusy=true;ghT
       const r=await ghApi('PUT',body);
       if(r.ok){ghSha=(await r.json()).content.sha;ghStatus('✓ Salvato su GitHub','ok');ok=true;break}
       if((r.status===409||r.status===422)&&k===0){const rem=await ghRead();ghSha=rem?rem.sha:null;if(rem){const d=fixDb(rem.data);['quotes','clients','items'].forEach(t=>db[t]=mergeById(db[t],d[t]))}continue}
-      throw new Error(r.status===401?'Token non valido o scaduto':r.status===403||r.status===404?'Il token non può scrivere nel repository':'Errore GitHub '+r.status)}}
+      throw new Error(r.status===401?'Token non valido o scaduto: chiedi un nuovo link a chi ti ha dato l\'app':r.status===403||r.status===404?'Il token non può scrivere nel repository':'Errore GitHub '+r.status)}}
   catch(e){ghStatus('⚠ Non salvato su GitHub','err');toast('GitHub: '+(e.message||'connessione assente')+'. I dati restano in questo browser.')}
   finally{ghBusy=false;if(ghAgain){ghAgain=false;ghPush()}}return ok}
+const APP_URL=/github\.io$/.test(location.hostname)?location.origin+location.pathname:'https://lucioros.github.io/preventivi/';
+async function ghConnect(v,ditta){
+  const hadData=db.quotes.length||db.items.length;gh={...v,ready:false};
+  try{toast('Collegamento a GitHub…');const r=await ghRead();
+    const finish=async useRemote=>{gh.ready=true;try{localStorage.setItem(GHK,JSON.stringify(gh))}catch(e){}
+      if(r&&useRemote){await ghPull();toast('Collegato: dati caricati da GitHub')}
+      else{if(useRemote===null){db=blank()}if(ditta&&!db.settings.ragione)db.settings.ragione=ditta;try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}ghSha=r?r.sha:null;if(await ghPush(true))toast('Collegato: archivio pronto su GitHub')}
+      go(ditta&&!db.quotes.length?'settings':view)};
+    if(r&&hadData)ask('Su GitHub ci sono già dei dati per questo utente. Usare quelli di GitHub (consigliato)? Se annulli, nessun dato viene sovrascritto.',()=>finish(true),'Usa i dati di GitHub',()=>{gh={};try{localStorage.removeItem(GHK)}catch(e){}});
+    else if(!r&&hadData)ask('In questo browser ci sono già dei preventivi. Vuoi copiarli nel nuovo archivio, oppure partire da zero?',()=>finish(false),'Copia i dati',()=>finish(null),'Parti da zero');
+    else finish(true)}
+  catch(e){gh.ready=false;toast('GitHub: '+(e.message||'impossibile collegarsi'))}}
+function activation(){const m=location.hash.match(/^#attiva=([\w-]+)$/);if(!m)return false;
+  let c=null;try{c=JSON.parse(b64d(m[1].replace(/-/g,'+').replace(/_/g,'/')))}catch(e){}
+  try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}
+  if(!c||!c.o||!c.r||!c.t){toast('Link di attivazione non valido');return false}
+  $('modal').innerHTML=`<div class="modal"><div class="card"><h3>Benvenuto in Preventivi Facili</h3><p>Stai attivando l'app per <b>${esc(c.d)}</b>.</p>
+   <label for="w_name">Come ti chiami?</label><input id="w_name" value="${esc(gh.user||'')}" placeholder="Es. Mario"><p class="mut">Serve a tenere separati i preventivi di ogni persona della ditta. Usa sempre lo stesso nome su tutti i tuoi dispositivi.</p>
+   <div class="toolbar" style="justify-content:flex-end;margin:0"><button class="btn pri" id="w_ok">Attiva</button></div></div></div>`;
+  $('w_name').focus();
+  $('w_ok').onclick=()=>{const u=$('w_name').value.trim();if(!u)return toast('Scrivi il tuo nome');$('modal').innerHTML='';ghConnect({user:u,owner:c.o,repo:c.r,branch:c.b||'main',token:c.t},c.d)};
+  return true}
+function loadLogo(f){if(!f)return;if(!/^image\//.test(f.type))return toast('Scegli un\'immagine (PNG o JPG)');const img=new Image();const url=URL.createObjectURL(f);
+  img.onload=()=>{const k=Math.min(1,400/img.width,160/img.height),cv=document.createElement('canvas');cv.width=Math.round(img.width*k);cv.height=Math.round(img.height*k);cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);URL.revokeObjectURL(url);db.settings.logo=cv.toDataURL('image/png');save();render();toast('Logo salvato')};
+  img.onerror=()=>toast('Immagine non leggibile');img.src=url}
 addEventListener('beforeunload',e=>{if(ghTimer||ghBusy){e.preventDefault();e.returnValue=''}});
 const uid=()=>Math.random().toString(36).slice(2,9)+Date.now().toString(36);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -156,11 +183,12 @@ const calc=q=>{let imp=0,iva=0;const per={};for(const r of q.righe){const n=rowN
 const nextNumber=y=>{const ns=db.quotes.filter(q=>q.anno===y).map(q=>q.numero);return(ns.length?Math.max(...ns):0)+1};
 const label=q=>`${q.numero}/${q.anno}`;
 let tt;function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2600)}
-function ask(msg,ok,okLabel='Conferma'){$('modal').innerHTML=`<div class="modal"><div class="card"><p>${esc(msg)}</p><div class="toolbar" style="justify-content:flex-end;margin:0"><button class="btn" id="m-no">Annulla</button><button class="btn pri" id="m-ok">${esc(okLabel)}</button></div></div></div>`;$('m-no').onclick=()=>$('modal').innerHTML='';$('m-ok').onclick=()=>{$('modal').innerHTML='';ok()}}
+function ask(msg,ok,okLabel='Conferma',no,noLabel='Annulla'){$('modal').innerHTML=`<div class="modal"><div class="card"><p>${esc(msg)}</p><div class="toolbar" style="justify-content:flex-end;margin:0"><button class="btn" id="m-no">${esc(noLabel)}</button><button class="btn pri" id="m-ok">${esc(okLabel)}</button></div></div></div>`;$('m-no').onclick=()=>{$('modal').innerHTML='';no&&no()};$('m-ok').onclick=()=>{$('modal').innerHTML='';ok()}}
 const opts=(arr,sel,fmt=x=>x)=>{const a=arr.includes(sel)||sel===''||sel==null?arr:[sel,...arr];return a.map(x=>`<option value="${esc(x)}"${String(x)===String(sel)?' selected':''}>${esc(fmt(x))}</option>`).join('')};
 
 function go(v){view=v;render();scrollTo(0,0)}
 function render(){
+  $('bn').textContent=db.settings.ragione||'Preventivi Facili';
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
   $('app').innerHTML=({list:vList,edit:vEdit,items:vItems,clients:vClients,settings:vSettings})[view]();
   $('foot').innerHTML=view==='edit'?`<div class="foot"><div class="in"><div class="sum" id="fsum"></div><button class="btn" data-a="preview">Anteprima / Stampa</button><button class="btn" data-a="cancel">Annulla</button><button class="btn pri" data-a="savequote">Salva preventivo</button></div></div>`:'';
@@ -283,7 +311,9 @@ function cliRows(){const s=norm($('cs')?.value);
 /* ---------- IMPOSTAZIONI ---------- */
 const SF=[['ragione','Ragione sociale / Nome ditta'],['piva','P.IVA / Codice fiscale'],['indirizzo','Indirizzo'],['email','Email'],['telefono','Telefono'],['iban','IBAN (per i pagamenti)']];
 function vSettings(){const s=db.settings;
-  return `<h2>Impostazioni</h2><div class="card"><h3>La tua azienda</h3><p class="mut">Questi dati compaiono in alto su ogni preventivo stampato.</p><div class="grid">${SF.map(([k,l])=>`<div${k==='ragione'||k==='indirizzo'?' class="span2"':''}><label for="s_${k}">${l}</label><input id="s_${k}" data-s="${k}" value="${esc(s[k])}"></div>`).join('')}</div></div>
+  return `<h2>Impostazioni</h2><div class="card"><h3>La tua azienda</h3><p class="mut">Questi dati compaiono in alto su ogni preventivo stampato.</p>
+   <div class="logo-row">${s.logo?`<img src="${esc(s.logo)}" alt="Logo" class="logo-prev">`:'<div class="logo-prev empty">Nessun logo</div>'}<div><label for="s_logo">Logo della ditta (PNG o JPG)</label><input id="s_logo" type="file" accept="image/*">${s.logo?'<button class="btn sm del" data-a="nologo" style="margin-top:6px">Rimuovi logo</button>':''}</div></div>
+   <div class="grid">${SF.map(([k,l])=>`<div${k==='ragione'||k==='indirizzo'?' class="span2"':''}><label for="s_${k}">${l}</label><input id="s_${k}" data-s="${k}" value="${esc(s[k])}"></div>`).join('')}</div></div>
   <div class="card"><h3>Valori predefiniti</h3><div class="grid">
    <div><label for="s_iva">IVA predefinita</label><select id="s_iva" data-s="ivaDefault">${opts(IVA.map(String),String(s.ivaDefault),x=>x+'%')}</select></div>
    <div><label for="s_val">Validità preventivo (giorni)</label><input id="s_val" type="number" data-s="validita" value="${esc(s.validita)}"></div>
@@ -300,13 +330,24 @@ function vSettings(){const s=db.settings;
    </div>
    <p class="mut">Stato: <b>${ghOn()?'collegato':'non collegato'}</b>. Il token resta salvato solo in questo browser.</p>
    <div class="toolbar" style="margin:0"><button class="btn pri" data-a="ghconnect">Collega e carica i dati</button>${ghOn()?'<button class="btn" data-a="ghsync">Ricarica da GitHub</button><button class="btn del" data-a="ghoff">Scollega</button>':''}</div></div>
+  <details class="card"><summary><b>Per l'amministratore: crea il link di attivazione per una ditta</b></summary>
+   <p class="mut">Crea prima il repository privato e il token della ditta (vedi README). Il link contiene il token: mandalo solo alla ditta, in privato.</p>
+   <div class="grid">
+    <div class="span2"><label for="a_ditta">Nome della ditta *</label><input id="a_ditta" placeholder="Es. Edilizia Rossi srl"></div>
+    <div><label for="a_owner">Proprietario GitHub *</label><input id="a_owner" value="${esc(gh.owner||'lucioros')}"></div>
+    <div><label for="a_repo">Repository della ditta *</label><input id="a_repo" placeholder="Es. preventivi-rossi"></div>
+    <div><label for="a_branch">Branch</label><input id="a_branch" value="main"></div>
+    <div class="span2"><label for="a_token">Token della ditta *</label><input id="a_token" type="password" autocomplete="off" placeholder="github_pat_…"></div>
+   </div>
+   <div class="toolbar" style="margin:12px 0 8px"><button class="btn pri" data-a="mklink">Crea link</button><button class="btn" data-a="copylink">Copia link</button></div>
+   <textarea id="a_out" readonly style="font:13px ui-monospace,monospace" placeholder="Il link apparirà qui"></textarea></details>
   <div class="card"><h3>Copia di sicurezza</h3><p class="mut">Per ora i dati restano in questo browser. Copia il backup e conservalo, oppure incollalo qui sotto per ripristinarlo su un altro computer.</p>
    <textarea id="bk" style="min-height:110px;font:13px ui-monospace,monospace" placeholder="Il backup apparirà qui"></textarea>
    <div class="toolbar" style="margin:10px 0 0"><button class="btn" data-a="exp">Genera backup</button><button class="btn" data-a="copy">Copia</button><button class="btn" data-a="imp">Ripristina da testo</button><button class="btn del" data-a="wipe">Cancella tutto</button></div></div>`}
 
 /* ---------- STAMPA ---------- */
 function printQuote(q){const s=db.settings,t=calc(q),sc=q.righe.some(r=>num(r.sconto));const sca=new Date(q.data+'T00:00');sca.setDate(sca.getDate()+num(q.validita));const c=q.cliente;
-  $('print').innerHTML=`<div class="p-head"><div><h1>${esc(s.ragione||'La tua azienda')}</h1>${esc(s.indirizzo)}<br>${s.piva?'P.IVA '+esc(s.piva)+'<br>':''}${esc([s.telefono,s.email].filter(Boolean).join(' · '))}</div>
+  $('print').innerHTML=`<div class="p-head"><div>${s.logo?`<img class="p-logo" src="${esc(s.logo)}" alt="">`:''}<h1>${esc(s.ragione||'La tua azienda')}</h1>${esc(s.indirizzo)}<br>${s.piva?'P.IVA '+esc(s.piva)+'<br>':''}${esc([s.telefono,s.email].filter(Boolean).join(' · '))}</div>
   <div class="p-box"><b>Spett.le ${esc(c.nome)}</b><br>${esc(c.indirizzo)}${c.piva?'<br>P.IVA/CF '+esc(c.piva):''}${c.email?'<br>'+esc(c.email):''}</div></div>
   <h2 style="font-size:16pt">Preventivo n. ${esc(label(q))} del ${fdate(q.data)}</h2>${q.oggetto?`<p><b>Oggetto:</b> ${esc(q.oggetto)}</p>`:''}
   <table class="p-tab"><thead><tr><th>#</th><th>Descrizione</th><th>U.M.</th><th class="n">Q.tà</th><th class="n">Prezzo unit.</th>${sc?'<th class="n">Sconto</th>':''}<th class="n">IVA</th><th class="n">Importo</th></tr></thead><tbody>
@@ -345,15 +386,13 @@ const acts={
   exp(){$('bk').value=JSON.stringify(db);toast('Backup generato: premi Copia')},
   copy(){const t=$('bk').value||JSON.stringify(db);$('bk').value=t;navigator.clipboard?.writeText(t).then(()=>toast('Copiato'),()=>{$('bk').select();toast('Seleziona e copia a mano')})},
   imp(){let d;try{d=JSON.parse($('bk').value);if(!Array.isArray(d.quotes))throw 0}catch(e){return toast('Il testo incollato non è un backup valido')}ask('Sostituire tutti i dati attuali con il backup?',()=>{const b=blank();db={...b,...d,settings:{...b.settings,...d.settings}};save();toast('Dati ripristinati');go('list')},'Ripristina')},
-  async ghconnect(){const v={user:$('g_user').value.trim(),owner:$('g_owner').value.trim(),repo:$('g_repo').value.trim(),branch:$('g_branch').value.trim()||'main',token:$('g_token').value.trim()};
-    if(!v.user||!v.owner||!v.repo||!v.token)return toast('Compila tutti i campi con l\'asterisco');
-    const hadData=db.quotes.length||db.items.length;gh={...v,ready:false};
-    try{toast('Collegamento a GitHub…');const r=await ghRead();
-      const finish=async remoteWins=>{gh.ready=true;try{localStorage.setItem(GHK,JSON.stringify(gh))}catch(e){}
-        if(r&&remoteWins){await ghPull();toast('Collegato: dati caricati da GitHub')}else{ghSha=r?r.sha:null;if(await ghPush(true))toast('Collegato: i dati di questo browser sono ora su GitHub')}render()};
-      if(r&&hadData)ask('Su GitHub ci sono già dei dati per questo utente. Usare quelli di GitHub (consigliato)? Se annulli, nessun dato viene sovrascritto.',()=>finish(true),'Usa i dati di GitHub');
-      else finish(true)}
-    catch(e){gh.ready=false;toast('GitHub: '+(e.message||'impossibile collegarsi'))}},
+  ghconnect(){const v={user:$('g_user').value.trim(),owner:$('g_owner').value.trim(),repo:$('g_repo').value.trim(),branch:$('g_branch').value.trim()||'main',token:$('g_token').value.trim()};
+    if(!v.user||!v.owner||!v.repo||!v.token)return toast('Compila tutti i campi con l\'asterisco');ghConnect(v)},
+  mklink(){const v={d:$('a_ditta').value.trim(),o:$('a_owner').value.trim(),r:$('a_repo').value.trim(),b:$('a_branch').value.trim()||'main',t:$('a_token').value.trim()};
+    if(!v.d||!v.o||!v.r||!v.t)return toast('Compila tutti i campi per creare il link');
+    $('a_out').value=APP_URL+'#attiva='+b64e(JSON.stringify(v)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');toast('Link creato: premi Copia link')},
+  copylink(){const t=$('a_out').value;if(!t)return toast('Crea prima il link');navigator.clipboard?.writeText(t).then(()=>toast('Link copiato'),()=>{$('a_out').select();toast('Seleziona e copia a mano')})},
+  nologo(){delete db.settings.logo;save();render()},
   async ghsync(){try{await ghPull();render();toast('Dati ricaricati da GitHub')}catch(e){toast('GitHub: '+e.message)}},
   ghoff(){ask('Scollegare GitHub da questo browser? I dati su GitHub restano.',()=>{gh={};ghSha=null;try{localStorage.removeItem(GHK)}catch(e){}render();ghStatus('')},'Scollega')},
   wipe(){ask('Cancellare TUTTI i preventivi, voci e clienti? Non si può annullare.',()=>{db=blank();save();go('list')},'Cancella tutto')}
@@ -367,12 +406,12 @@ document.addEventListener('input',e=>{const t=e.target,row=t.closest('.row');
   else if(t.dataset.c)setCli(t.dataset.c,t.value);
   else if(row&&t.dataset.r){const i=+row.dataset.i,r=cur.righe[i];r[t.dataset.r]=t.value;row.querySelector('.rt').textContent=eur(rowNet(r));
     if(t.dataset.r==='desc'){if(findItem(t.value)&&t.tagName==='INPUT'&&e.inputType!=='insertText'&&e.inputType!=='deleteContentBackward'){pickItem(i,t.value);return}row.querySelector('.memo').textContent=findItem(t.value)?'✓ Salvata':'⭐ Memorizza'}totals()}});
-document.addEventListener('change',e=>{const t=e.target;
+document.addEventListener('change',e=>{const t=e.target;if(t.id==='s_logo'){loadLogo(t.files[0]);return}
   if(t.id==='qf'){qf=t.value;listRows()}
   else if(t.dataset.stato){const q=db.quotes.find(x=>x.id===t.dataset.stato);q.stato=t.value;t.className='badge s-'+t.value;save();render()}
   else if(t.dataset.r==='desc'){const row=t.closest('.row');pickItem(+row.dataset.i,t.value)}});
 render();
-if(ghOn())ghPull().then(render).catch(e=>{ghStatus('⚠ GitHub non raggiungibile','err');toast('GitHub: '+e.message+'. Uso i dati salvati in questo browser.')});
+if(!activation()&&ghOn())ghPull().then(render).catch(e=>{ghStatus('⚠ GitHub non raggiungibile','err');toast('GitHub: '+e.message+'. Uso i dati salvati in questo browser.')});
 }
 </script>
 </body>

@@ -43,5 +43,28 @@ Note:
 - Se GitHub non è raggiungibile, l'app continua a funzionare con i dati del browser e lo segnala in alto.
 - Ogni file utente può arrivare a 1 MB (migliaia di preventivi).
 
+## Usare l'app con più ditte
+L'app è una sola (`https://lucioros.github.io/preventivi/`), ma **ogni ditta ha il suo repository privato e il suo token**: così nessuna ditta può vedere i dati di un'altra.
+
+### Aggiungere una nuova ditta (circa 5 minuti)
+1. **Crea il repository della ditta**: github.com/new → nome `preventivi-NOMEDITTA` (es. `preventivi-rossi`) → **Private** → spunta *Add a README file* → Create
+2. **Crea il token della ditta**: github.com/settings/personal-access-tokens/new
+   - Nome: `preventivi-rossi`; scadenza: la più lunga che ti propone (segnati la data!)
+   - *Repository access* → **Only select repositories** → solo `preventivi-rossi`
+   - *Permissions* → **Contents: Read and write** → Generate token → copialo
+3. **Crea il link di attivazione**: apri l'app → *Impostazioni* → *Per l'amministratore: crea il link di attivazione* → nome ditta, repository, token → **Crea link** → **Copia link**
+4. **Manda il link alla ditta** in privato (WhatsApp, email). Ogni persona della ditta lo apre sul proprio computer o telefono, scrive il suo nome e l'app è pronta. Poi va su *Impostazioni* e inserisce dati e logo della ditta.
+
+Ogni persona della ditta ha il suo file (`dati/mario.json`, `dati/luca.json`) nello stesso repository.
+
+### Quando un token scade
+L'app mostra "Token non valido o scaduto". Crea un nuovo token per lo stesso repository (passo 2), un nuovo link (passo 3) e rimandalo: i dati non si perdono.
+
+### Togliere l'accesso a una ditta
+Elimina il suo token da github.com/settings/personal-access-tokens. I dati restano nel repository finché non lo cancelli.
+
+### Privacy
+I repository sono sul tuo account, quindi conservi tu i dati dei clienti delle ditte: è opportuno un breve accordo scritto con ogni ditta sul trattamento dei dati (GDPR).
+
 ## Alternativa futura
 Se un giorno servissero login veri e permessi più fini, `supabase_schema.sql` contiene lo schema pronto per un database Supabase.
