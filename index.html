@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Preventivi Facili</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: calmo, pratico, da bottega: zero gergo, passi numerati
+   IDEA: il blocchetto dei preventivi a ricalco, ma che fa i conti da solo
+   PICTURE: il preventivo stesso, con il totale grande che si aggiorna mentre scrivi
+   COLOUR and TYPE: verde profondo #00463c, bianco, lime-white, corallo per errori; Inter Tight + Inter
+   LAYOUT: barra verde in alto, una colonna calma per il modulo, totale fisso a fondo pagina */
+:root{color-scheme:light dark;
+--bg:light-dark(#f4f6f3,#0f1513);--card:light-dark(#fff,#18201d);--ink:light-dark(#14201c,#e7eee9);
+--mut:light-dark(#5d6b65,#9aa9a2);--line:light-dark(#dfe5e1,#2a3531);--g:#00463c;--g2:light-dark(#e6f5c8,#22362a);
+--acc:light-dark(#00463c,#9fd8a8);--bad:#e0523d;--field:light-dark(#fff,#111816)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Inter,system-ui,sans-serif;overflow-x:clip}
+h1,h2,h3{font-family:"Inter Tight",Inter,sans-serif;line-height:1.1;margin:0 0 12px}
+h2{font-size:32px;text-wrap:balance}h3{font-size:20px}
+header{background:var(--g);color:#fff;position:sticky;top:0;z-index:5}
+.bar{max-width:1100px;margin:auto;display:flex;align-items:center;gap:6px;padding:8px 16px;flex-wrap:wrap}
+.brand{font:700 20px "Inter Tight",sans-serif;margin-right:auto;color:#e6f5c8}
+.ghs{font:500 13px Inter,sans-serif;color:#cfe3d9;margin-left:8px;white-space:nowrap}.ghs.err{color:#ffb4a6}.ghs.ok{color:#e6f5c8}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav button{background:transparent;color:#fff;border:0;padding:10px 12px;border-radius:8px;font:600 15px Inter,sans-serif;cursor:pointer;min-height:44px}
+nav button.on,nav button:hover{background:rgba(255,255,255,.14)}
+nav button.new{background:#e6f5c8;color:var(--g)}
+main{max-width:1100px;margin:auto;padding:20px 16px 120px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:16px}
+label{display:block;font-size:13px;color:var(--mut);margin-bottom:4px;font-weight:600}
+input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font:16px Inter,sans-serif;background:var(--field);color:var(--ink);min-height:44px}
+textarea{min-height:70px;resize:vertical}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr))}
+.span2{grid-column:span 2}@media(max-width:600px){.span2{grid-column:auto}}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:10px 16px;border-radius:8px;font:600 15px Inter,sans-serif;cursor:pointer;min-height:44px}
+.btn:hover{border-color:var(--acc)}
+.btn.pri{background:var(--g);color:#fff;border-color:var(--g)}
+.btn.sm{padding:6px 10px;font-size:14px;min-height:38px}
+.btn.del{color:var(--bad)}
+.help{background:var(--g2);border-radius:12px;padding:14px 16px;margin-bottom:16px}
+.help ol{margin:4px 0 0;padding-left:20px}
+.row{display:grid;grid-template-columns:minmax(0,2.6fr) .9fr .7fr 1fr .7fr .8fr 1fr auto;gap:8px;align-items:end;padding:14px 0;border-top:1px solid var(--line)}
+.row .rt{padding:10px 0;font-weight:700;text-align:right;white-space:nowrap}
+.racts{display:flex;gap:4px}
+@media(max-width:860px){.row{grid-template-columns:1fr 1fr}.row .desc,.row .racts{grid-column:1/-1}.row .rt{text-align:left}}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.chip{border:1px dashed var(--acc);background:transparent;color:var(--ink);border-radius:99px;padding:8px 12px;font:500 14px Inter,sans-serif;cursor:pointer}
+.chip small{color:var(--mut)}
+.totals{margin-top:16px;margin-left:auto;max-width:380px}
+.totals div{display:flex;justify-content:space-between;padding:4px 0;white-space:nowrap}
+.totals .big{font:700 26px "Inter Tight",sans-serif;border-top:2px solid var(--ink);margin-top:6px;padding-top:8px}
+.foot{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);z-index:4}
+.foot .in{max-width:1100px;margin:auto;padding:10px 16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.foot .sum{margin-right:auto;font:700 22px "Inter Tight",sans-serif;white-space:nowrap}
+.foot .sum small{font:500 13px Inter;color:var(--mut);display:block}
+table.list{width:100%;border-collapse:collapse}
+.list th,.list td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+.list th{font-size:13px;color:var(--mut)}.num{text-align:right!important;white-space:nowrap}
+.badge{padding:3px 10px;border-radius:99px;font-size:13px;font-weight:600;border:0;min-height:32px;width:auto}
+.s-bozza{background:light-dark(#eceff0,#2a3230)}.s-inviato{background:light-dark(#dbeafe,#1e3350)}
+.s-accettato{background:light-dark(#d9f2dc,#1d3b25)}.s-rifiutato{background:light-dark(#fde2dd,#46231d)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:12px;margin-bottom:16px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.stat b{display:block;font:700 26px "Inter Tight",sans-serif;white-space:nowrap}
+.stat span{color:var(--mut);font-size:14px}
+.empty{text-align:center;padding:48px 16px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.toolbar input{flex:1 1 220px;width:auto}.toolbar select{width:auto}
+.mut{color:var(--mut);font-size:14px}
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#14201c;color:#fff;padding:12px 18px;border-radius:10px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:9}
+.toast.on{opacity:1}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:10;padding:16px}
+.modal .card{max-width:440px;width:100%}
+@media(max-width:600px){table{font-size:14px}.stack thead{display:none}.stack tr{display:grid;padding-block:10px;border-bottom:1px solid var(--line)}.stack td{display:flow-root;border:0;padding:3px 0;padding-inline-start:7em;text-align:start!important}.stack td::before{content:attr(data-l);float:inline-start;width:6.5em;margin-inline-start:-7em;color:var(--mut);font-size:13px}.stack td:empty{display:none}h2{font-size:26px}}
+@media(prefers-reduced-motion:reduce){.toast{transition:none}}
+/* stampa */
+#print{display:none}
+@media print{header,main,.foot,.toast,.modal{display:none!important}#print{display:block;color:#000;font:11pt/1.4 Inter,Arial,sans-serif}body{background:#fff}
+.p-head{display:flex;justify-content:space-between;gap:24px;margin-bottom:24px}.p-head h1{font-size:20pt;margin:0}
+.p-box{border:1px solid #999;padding:10px;border-radius:6px;min-width:45%}
+.p-tab{width:100%;border-collapse:collapse;margin:16px 0}.p-tab th,.p-tab td{border-bottom:1px solid #bbb;padding:6px 4px;text-align:left}.p-tab .n{text-align:right;white-space:nowrap}
+.p-tot{margin-left:auto;width:50%}.p-tot div{display:flex;justify-content:space-between;padding:2px 0}.p-tot .b{font-weight:700;font-size:13pt;border-top:1.5px solid #000;margin-top:4px;padding-top:4px}
+.p-sign{display:flex;justify-content:space-between;margin-top:48px}.p-sign div{border-top:1px solid #000;width:40%;padding-top:4px;font-size:9pt}}
+</style>
+</head>
+<body>
+<header><div class="bar"><div class="brand">Preventivi Facili <span id="ghs" class="ghs"></span></div>
+<nav>
+<button data-v="list">Preventivi</button>
+<button data-v="new" class="new">+ Nuovo preventivo</button>
+<button data-v="items">Le mie voci</button>
+<button data-v="clients">Clienti</button>
+<button data-v="settings">Impostazioni</button>
+</nav></div></header>
+<main id="app"></main>
+<div id="foot"></div>
+<div id="print"></div>
+<div class="toast" id="toast"></div>
+<div id="modal"></div>
+<script>
+{
+const KEY='preventivi_facili_v1';
+const UM=['pz','ore','giorni','m','m²','m³','kg','lt','a corpo','forfait','km','conf.','mese'];
+const IVA=[22,10,5,4,0];
+const STATI={bozza:'Bozza',inviato:'Inviato',accettato:'Accettato',rifiutato:'Rifiutato'};
+const blank=()=>({settings:{ragione:'',piva:'',indirizzo:'',email:'',telefono:'',iban:'',ivaDefault:22,validita:30,pagamento:"50% all'accettazione, saldo a fine lavori",note:''},clients:[],items:[],quotes:[]});
+const load=()=>{try{const s=localStorage.getItem(KEY);if(s){const d=JSON.parse(s);const b=blank();return{...b,...d,settings:{...b.settings,...d.settings}}}}catch(e){}return blank()};
+let db=load(),view='list',cur=null,editId=null,qs='',qf='';
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){toast('Attenzione: il browser non permette di salvare')}ghQueue()};
+
+/* ---------- DATABASE SU GITHUB ---------- */
+const GHK='preventivi_github_v1';
+let gh=(()=>{try{return JSON.parse(localStorage.getItem(GHK))||{}}catch(e){return{}}})();
+let ghSha=null,ghTimer=null,ghBusy=false,ghAgain=false;
+const ghOn=()=>!!(gh.owner&&gh.repo&&gh.token&&gh.user&&gh.ready);
+const ghPath=()=>'dati/'+(gh.user||'utente').toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'.json';
+const b64e=s=>{const b=new TextEncoder().encode(s);let o='';for(let i=0;i<b.length;i+=8192)o+=String.fromCharCode(...b.subarray(i,i+8192));return btoa(o)};
+const b64d=s=>new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\s/g,'')),c=>c.charCodeAt(0)));
+function ghStatus(t,cls){const el=document.getElementById('ghs');if(el){el.textContent=t;el.className='ghs '+(cls||'')}}
+function ghApi(method,body){return fetch(`https://api.github.com/repos/${encodeURIComponent(gh.owner)}/${encodeURIComponent(gh.repo)}/contents/${ghPath()}`+(method==='GET'?`?ref=${encodeURIComponent(gh.branch||'main')}&t=${Date.now()}`:''),
+  {method,cache:'no-store',headers:{Authorization:'Bearer '+gh.token,Accept:'application/vnd.github+json'},body:body?JSON.stringify(body):undefined})}
+async function ghRead(){const r=await ghApi('GET');if(r.status===404)return null;
+  if(!r.ok)throw new Error(r.status===401?'Token non valido o scaduto':r.status===403?'Il token non ha il permesso di accedere al repository':'Errore GitHub '+r.status);
+  const j=await r.json();if(!j.content&&j.size)throw new Error('File dati troppo grande (oltre 1 MB)');return{sha:j.sha,data:JSON.parse(b64d(j.content||'')||'{}')}}
+const fixDb=d=>{const b=blank();return{...b,...d,settings:{...b.settings,...(d.settings||{})}}};
+const mergeById=(a=[],b=[])=>{const m=new Map(b.map(x=>[x.id,x]));a.forEach(x=>m.set(x.id,x));return[...m.values()]};
+async function ghPull(){ghStatus('Carico da GitHub…');const r=await ghRead();
+  if(!r){ghSha=null;await ghPush(true);return 'created'}
+  ghSha=r.sha;db=fixDb(r.data);try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}ghStatus('✓ Dati su GitHub','ok');return 'loaded'}
+function ghQueue(){if(!ghOn())return;clearTimeout(ghTimer);ghStatus('Salvataggio…');ghTimer=setTimeout(()=>ghPush(),1200)}
+async function ghPush(first){if(ghBusy){ghAgain=true;return true}ghBusy=true;ghTimer=null;let ok=false;
+  try{for(let k=0;k<2;k++){const body={message:`Preventivi ${gh.user}: aggiornamento ${new Date().toLocaleString('it-IT')}`,content:b64e(JSON.stringify(db,null,1)),branch:gh.branch||'main'};if(ghSha)body.sha=ghSha;
+      const r=await ghApi('PUT',body);
+      if(r.ok){ghSha=(await r.json()).content.sha;ghStatus('✓ Salvato su GitHub','ok');ok=true;break}
+      if((r.status===409||r.status===422)&&k===0){const rem=await ghRead();ghSha=rem?rem.sha:null;if(rem){const d=fixDb(rem.data);['quotes','clients','items'].forEach(t=>db[t]=mergeById(db[t],d[t]))}continue}
+      throw new Error(r.status===401?'Token non valido o scaduto':r.status===403||r.status===404?'Il token non può scrivere nel repository':'Errore GitHub '+r.status)}}
+  catch(e){ghStatus('⚠ Non salvato su GitHub','err');toast('GitHub: '+(e.message||'connessione assente')+'. I dati restano in questo browser.')}
+  finally{ghBusy=false;if(ghAgain){ghAgain=false;ghPush()}}return ok}
+addEventListener('beforeunload',e=>{if(ghTimer||ghBusy){e.preventDefault();e.returnValue=''}});
+const uid=()=>Math.random().toString(36).slice(2,9)+Date.now().toString(36);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num=v=>{let s=String(v??'').trim();if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');const n=parseFloat(s);return isNaN(n)?0:n};
+const eur=n=>(n||0).toLocaleString('it-IT',{style:'currency',currency:'EUR'});
+const today=()=>new Date().toISOString().slice(0,10);
+const fdate=d=>d?new Date(d+'T00:00').toLocaleDateString('it-IT'):'';
+const clone=o=>JSON.parse(JSON.stringify(o));
+const $=id=>document.getElementById(id);
+const norm=s=>String(s||'').trim().toLowerCase();
+const findItem=d=>db.items.find(x=>norm(x.desc)===norm(d)&&norm(d));
+const rowNet=r=>num(r.qta)*num(r.prezzo)*(1-num(r.sconto)/100);
+const calc=q=>{let imp=0,iva=0;const per={};for(const r of q.righe){const n=rowNet(r),v=n*num(r.iva)/100;imp+=n;iva+=v;const k=num(r.iva);per[k]=per[k]||{imp:0,iva:0};per[k].imp+=n;per[k].iva+=v}return{imp,iva,tot:imp+iva,per}};
+const nextNumber=y=>{const ns=db.quotes.filter(q=>q.anno===y).map(q=>q.numero);return(ns.length?Math.max(...ns):0)+1};
+const label=q=>`${q.numero}/${q.anno}`;
+let tt;function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2600)}
+function ask(msg,ok,okLabel='Conferma'){$('modal').innerHTML=`<div class="modal"><div class="card"><p>${esc(msg)}</p><div class="toolbar" style="justify-content:flex-end;margin:0"><button class="btn" id="m-no">Annulla</button><button class="btn pri" id="m-ok">${esc(okLabel)}</button></div></div></div>`;$('m-no').onclick=()=>$('modal').innerHTML='';$('m-ok').onclick=()=>{$('modal').innerHTML='';ok()}}
+const opts=(arr,sel,fmt=x=>x)=>{const a=arr.includes(sel)||sel===''||sel==null?arr:[sel,...arr];return a.map(x=>`<option value="${esc(x)}"${String(x)===String(sel)?' selected':''}>${esc(fmt(x))}</option>`).join('')};
+
+function go(v){view=v;render();scrollTo(0,0)}
+function render(){
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
+  $('app').innerHTML=({list:vList,edit:vEdit,items:vItems,clients:vClients,settings:vSettings})[view]();
+  $('foot').innerHTML=view==='edit'?`<div class="foot"><div class="in"><div class="sum" id="fsum"></div><button class="btn" data-a="preview">Anteprima / Stampa</button><button class="btn" data-a="cancel">Annulla</button><button class="btn pri" data-a="savequote">Salva preventivo</button></div></div>`:'';
+  if(view==='edit')refresh();
+  if(view==='list')listRows();
+  if(view==='items')itemRows();
+  if(view==='clients')cliRows();
+}
+
+/* ---------- ELENCO PREVENTIVI ---------- */
+function vList(){
+  if(!db.quotes.length)return `<div class="card empty"><h2>Nessun preventivo, per ora</h2><p class="mut">Ci vogliono un paio di minuti. Prima, se vuoi, inserisci i dati della tua azienda in <b>Impostazioni</b>: compariranno sul preventivo stampato.</p><p><button class="btn pri" data-a="new">+ Crea il primo preventivo</button> <button class="btn" data-a="demo">Carica un esempio</button></p></div>`;
+  const y=new Date().getFullYear(),qy=db.quotes.filter(q=>q.anno===y);
+  const s=st=>qy.filter(q=>q.stato===st).reduce((a,q)=>a+(q.totale||0),0);
+  return `<h2>I tuoi preventivi</h2>
+  <div class="stats"><div class="stat"><span>Preventivi ${y}</span><b>${qy.length}</b></div>
+  <div class="stat"><span>In attesa di risposta</span><b>${eur(s('inviato'))}</b></div>
+  <div class="stat"><span>Accettati ${y}</span><b>${eur(s('accettato'))}</b></div></div>
+  <div class="card"><div class="toolbar"><input id="qs" placeholder="Cerca per cliente, oggetto o numero" value="${esc(qs)}"><select id="qf"><option value="">Tutti gli stati</option>${Object.entries(STATI).map(([k,v])=>`<option value="${k}"${qf===k?' selected':''}>${v}</option>`).join('')}</select></div>
+  <table class="list stack"><thead><tr><th>N.</th><th>Data</th><th>Cliente</th><th>Oggetto</th><th class="num">Totale</th><th>Stato</th><th></th></tr></thead><tbody id="tb"></tbody></table></div>`}
+function listRows(){
+  if(!$('tb'))return;const s=norm(qs);
+  const list=db.quotes.filter(q=>(!qf||q.stato===qf)&&(!s||norm(q.cliente.nome+' '+q.oggetto+' '+label(q)).includes(s))).sort((a,b)=>b.anno-a.anno||b.numero-a.numero);
+  $('tb').innerHTML=list.map(q=>`<tr><td><b>${esc(label(q))}</b></td><td>${fdate(q.data)}</td><td>${esc(q.cliente.nome)}</td><td>${esc(q.oggetto)}</td><td class="num">${eur(q.totale)}</td>
+  <td><select class="badge s-${q.stato}" data-stato="${q.id}">${Object.entries(STATI).map(([k,v])=>`<option value="${k}"${q.stato===k?' selected':''}>${v}</option>`).join('')}</select></td>
+  <td><div class="racts"><button class="btn sm" data-a="open" data-id="${q.id}">Apri</button><button class="btn sm" data-a="dup" data-id="${q.id}">Duplica</button><button class="btn sm" data-a="print" data-id="${q.id}">Stampa</button><button class="btn sm del" data-a="delq" data-id="${q.id}" aria-label="Elimina">✕</button></div></td></tr>`).join('')||`<tr><td colspan="7" class="mut">Nessun preventivo trovato.</td></tr>`}
+
+/* ---------- EDITOR ---------- */
+const newRow=it=>({id:uid(),desc:it?it.desc:'',um:it?it.um:'pz',qta:1,prezzo:it?it.prezzo:'',sconto:it?it.sconto||0:0,iva:it?it.iva:db.settings.ivaDefault});
+function newQuote(){const y=new Date().getFullYear();cur={id:null,anno:y,numero:nextNumber(y),data:today(),validita:db.settings.validita,stato:'bozza',cliente:{nome:'',piva:'',indirizzo:'',email:'',telefono:''},oggetto:'',righe:[newRow()],note:db.settings.note,pagamento:db.settings.pagamento,consegna:''};go('edit')}
+function vEdit(){const q=cur,c=q.cliente;
+  return `<div class="help"><b>Come si fa, in 3 passi:</b><ol><li>Scrivi il nome del cliente (se c'è già in rubrica, i dati si compilano da soli).</li><li>Aggiungi le voci: tocca una delle tue voci salvate, oppure scrivine una nuova e premi <b>⭐ Memorizza</b> per riusarla la prossima volta.</li><li>Premi <b>Salva preventivo</b>, poi <b>Stampa</b> per avere il PDF.</li></ol></div>
+  <div class="card"><h2>Preventivo n. ${esc(label(q))}</h2><div class="grid">
+   <div><label for="e_num">Numero</label><input id="e_num" type="number" min="1" data-q="numero" value="${q.numero}"></div>
+   <div><label for="e_data">Data</label><input id="e_data" type="date" data-q="data" value="${esc(q.data)}"></div>
+   <div><label for="e_val">Valido per (giorni)</label><input id="e_val" type="number" min="0" data-q="validita" value="${esc(q.validita)}"></div>
+   <div><label for="e_st">Stato</label><select id="e_st" data-q="stato">${Object.entries(STATI).map(([k,v])=>`<option value="${k}"${q.stato===k?' selected':''}>${v}</option>`).join('')}</select></div>
+  </div></div>
+  <div class="card"><h3>1. Cliente</h3><div class="grid">
+   <div class="span2"><label for="c_nome">Nome o ragione sociale *</label><input id="c_nome" list="cli-list" data-c="nome" value="${esc(c.nome)}" placeholder="Scrivi o scegli dalla rubrica" autocomplete="off"></div>
+   <div><label for="c_piva">P.IVA / Codice fiscale</label><input id="c_piva" data-c="piva" value="${esc(c.piva)}"></div>
+   <div class="span2"><label for="c_indirizzo">Indirizzo</label><input id="c_indirizzo" data-c="indirizzo" value="${esc(c.indirizzo)}"></div>
+   <div><label for="c_email">Email</label><input id="c_email" type="email" data-c="email" value="${esc(c.email)}"></div>
+   <div><label for="c_telefono">Telefono</label><input id="c_telefono" data-c="telefono" value="${esc(c.telefono)}"></div>
+  </div><datalist id="cli-list">${db.clients.map(x=>`<option value="${esc(x.nome)}">`).join('')}</datalist>
+  <div style="margin-top:12px"><label for="e_ogg">Oggetto del preventivo</label><input id="e_ogg" data-q="oggetto" value="${esc(q.oggetto)}" placeholder="Es. Rifacimento bagno, Via Roma 12"></div></div>
+  <div class="card"><h3>2. Voci del preventivo</h3><div id="chips"></div><div id="rows"></div>
+   <button class="btn" data-a="addrow">+ Aggiungi una voce</button>
+   <datalist id="cat-list"></datalist><div class="totals" id="totals"></div></div>
+  <div class="card"><h3>3. Condizioni</h3><div class="grid">
+   <div><label for="e_pag">Pagamento</label><textarea id="e_pag" data-q="pagamento">${esc(q.pagamento)}</textarea></div>
+   <div><label for="e_cons">Tempi di consegna / esecuzione</label><textarea id="e_cons" data-q="consegna" placeholder="Es. 15 giorni lavorativi dall'accettazione">${esc(q.consegna)}</textarea></div>
+   <div class="span2"><label for="e_note">Note</label><textarea id="e_note" data-q="note" placeholder="Es. Smaltimento materiali incluso">${esc(q.note)}</textarea></div>
+  </div></div>`}
+function rowHtml(r,i){const inCat=!!findItem(r.desc);const io=IVA.map(String);
+  return `<div class="row" data-i="${i}">
+  <div class="desc"><label>Descrizione voce ${i+1}</label><input list="cat-list" data-r="desc" value="${esc(r.desc)}" placeholder="Scrivi o scegli una delle tue voci" autocomplete="off"></div>
+  <div><label>Unità</label><select data-r="um">${opts(UM,r.um)}</select></div>
+  <div><label>Quantità</label><input inputmode="decimal" data-r="qta" value="${esc(r.qta)}"></div>
+  <div><label>Prezzo unit. €</label><input inputmode="decimal" data-r="prezzo" value="${esc(r.prezzo)}" placeholder="0,00"></div>
+  <div><label>Sconto %</label><input inputmode="decimal" data-r="sconto" value="${esc(r.sconto)}"></div>
+  <div><label>IVA</label><select data-r="iva">${opts(io,String(num(r.iva)),x=>x+'%')}</select></div>
+  <div><label>Totale riga</label><div class="rt">${eur(rowNet(r))}</div></div>
+  <div class="racts"><button class="btn sm memo" data-a="memo" title="Salva tra le mie voci">${inCat?'✓ Salvata':'⭐ Memorizza'}</button><button class="btn sm" data-a="up" aria-label="Sposta su">↑</button><button class="btn sm del" data-a="delrow" aria-label="Elimina voce">✕</button></div></div>`}
+function refresh(){
+  const top=[...db.items].sort((a,b)=>(b.uses||0)-(a.uses||0)).slice(0,10);
+  $('chips').innerHTML=top.length?`<p class="mut" style="margin:0 0 6px">Le tue voci più usate, tocca per aggiungere:</p><div class="chips">${top.map(it=>`<button class="chip" data-a="additem" data-id="${it.id}">+ ${esc(it.desc)} <small>${eur(num(it.prezzo))}/${esc(it.um)}</small></button>`).join('')}</div>`:`<p class="mut">Suggerimento: quando scrivi una voce che usi spesso, premi ⭐ Memorizza. La ritroverai qui.</p>`;
+  $('cat-list').innerHTML=db.items.map(x=>`<option value="${esc(x.desc)}">${esc(eur(num(x.prezzo))+' / '+x.um)}</option>`).join('');
+  $('rows').innerHTML=cur.righe.map(rowHtml).join('');totals()}
+function totals(){const t=calc(cur);
+  $('totals').innerHTML=`<div><span>Imponibile</span><b>${eur(t.imp)}</b></div>${Object.entries(t.per).sort((a,b)=>b[0]-a[0]).map(([k,v])=>`<div class="mut"><span>IVA ${k}% su ${eur(v.imp)}</span><span>${eur(v.iva)}</span></div>`).join('')}<div class="big"><span>Totale</span><span>${eur(t.tot)}</span></div>`;
+  $('fsum').innerHTML=`<small>Totale preventivo IVA inclusa</small>${eur(t.tot)}`}
+function setCli(k,v){cur.cliente[k]=v;if(k!=='nome')return;const f=db.clients.find(x=>norm(x.nome)===norm(v));
+  if(f)['piva','indirizzo','email','telefono'].forEach(p=>{if(!cur.cliente[p]&&f[p]){cur.cliente[p]=f[p];$('c_'+p).value=f[p]}})}
+function pickItem(i,v){const it=findItem(v);if(!it)return;const r=cur.righe[i];Object.assign(r,{desc:it.desc,um:it.um,prezzo:it.prezzo,iva:it.iva,sconto:it.sconto||0});it.uses=(it.uses||0)+1;save();refresh()}
+function memo(i){const r=cur.righe[i];if(!r.desc.trim())return toast('Scrivi prima la descrizione della voce');
+  const data={desc:r.desc.trim(),um:r.um,prezzo:num(r.prezzo),iva:num(r.iva),sconto:num(r.sconto)};const ex=findItem(r.desc);
+  if(ex){ask(`"${ex.desc}" è già tra le tue voci (${eur(num(ex.prezzo))}/${ex.um}). Vuoi aggiornarla con questi valori?`,()=>{Object.assign(ex,data);save();refresh();toast('Voce aggiornata')},'Aggiorna');return}
+  db.items.push({id:uid(),codice:'',categoria:'',note:'',uses:1,...data});save();refresh();toast('Voce memorizzata: la ritrovi tra le più usate')}
+function saveQuote(andPrint){const q=cur;
+  if(!q.cliente.nome.trim()){toast('Manca il nome del cliente');$('c_nome').focus();return}
+  q.righe=q.righe.filter(r=>r.desc.trim()||num(r.prezzo));
+  if(!q.righe.length){q.righe=[newRow()];refresh();toast('Aggiungi almeno una voce');return}
+  q.righe.forEach(r=>{r.qta=num(r.qta);r.prezzo=num(r.prezzo);r.sconto=num(r.sconto);r.iva=num(r.iva)});
+  q.numero=parseInt(q.numero)||1;q.anno=new Date(q.data+'T00:00').getFullYear()||q.anno;
+  if(db.quotes.some(x=>x.id!==q.id&&x.anno===q.anno&&x.numero===q.numero)){q.numero=nextNumber(q.anno);toast('Numero già usato: assegnato il '+label(q))}
+  if(!db.clients.some(c=>norm(c.nome)===norm(q.cliente.nome)))db.clients.push({id:uid(),...clone(q.cliente)});
+  q.totale=calc(q).tot;q.modificato=new Date().toISOString();
+  if(q.id){db.quotes[db.quotes.findIndex(x=>x.id===q.id)]=clone(q)}else{q.id=uid();db.quotes.push(clone(q))}
+  save();toast('Preventivo '+label(q)+' salvato');const id=q.id;go('list');if(andPrint)printQuote(db.quotes.find(x=>x.id===id))}
+
+/* ---------- CATALOGO VOCI ---------- */
+function vItems(){const it=db.items.find(x=>x.id===editId)||{um:'pz',iva:db.settings.ivaDefault,sconto:0};
+  return `<h2>Le mie voci</h2><p class="mut">Le voci che usi più spesso. Le ritrovi già pronte quando fai un preventivo: basta toccarle.</p>
+  <div class="card"><h3>${editId?'Modifica voce':'Nuova voce'}</h3><div class="grid">
+   <div class="span2"><label for="i_desc">Descrizione *</label><input id="i_desc" value="${esc(it.desc)}" placeholder="Es. Posa piastrelle pavimento"></div>
+   <div><label for="i_codice">Codice (facoltativo)</label><input id="i_codice" value="${esc(it.codice)}"></div>
+   <div><label for="i_categoria">Categoria</label><input id="i_categoria" list="cat-names" value="${esc(it.categoria)}" placeholder="Es. Manodopera"></div>
+   <div><label for="i_um">Unità di misura</label><select id="i_um">${opts(UM,it.um)}</select></div>
+   <div><label for="i_prezzo">Prezzo unitario €</label><input id="i_prezzo" inputmode="decimal" value="${esc(it.prezzo)}"></div>
+   <div><label for="i_iva">IVA</label><select id="i_iva">${opts(IVA.map(String),String(num(it.iva)),x=>x+'%')}</select></div>
+   <div><label for="i_sconto">Sconto abituale %</label><input id="i_sconto" inputmode="decimal" value="${esc(it.sconto)}"></div>
+  </div><datalist id="cat-names">${[...new Set(db.items.map(x=>x.categoria).filter(Boolean))].map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
+  <div class="toolbar" style="margin:14px 0 0"><button class="btn pri" data-a="saveitem">${editId?'Salva modifiche':'+ Aggiungi voce'}</button>${editId?'<button class="btn" data-a="canceledit">Annulla</button>':''}</div></div>
+  <div class="card"><div class="toolbar"><input id="is" placeholder="Cerca tra le voci"></div>
+  <table class="list stack"><thead><tr><th>Descrizione</th><th>Categoria</th><th>U.M.</th><th class="num">Prezzo</th><th class="num">IVA</th><th class="num">Usata</th><th></th></tr></thead><tbody id="itb"></tbody></table></div>`}
+function itemRows(){const s=norm($('is')?.value);
+  $('itb').innerHTML=db.items.filter(x=>!s||norm(x.desc+' '+x.categoria+' '+x.codice).includes(s)).sort((a,b)=>(a.categoria||'').localeCompare(b.categoria||'')||a.desc.localeCompare(b.desc)).map(x=>`<tr><td>${x.codice?`<span class="mut">${esc(x.codice)}</span> `:''}${esc(x.desc)}</td><td>${esc(x.categoria)}</td><td>${esc(x.um)}</td><td class="num">${eur(num(x.prezzo))}</td><td class="num">${esc(num(x.iva))}%</td><td class="num">${x.uses||0} volte</td><td><div class="racts"><button class="btn sm" data-a="edititem" data-id="${x.id}">Modifica</button><button class="btn sm del" data-a="delitem" data-id="${x.id}" aria-label="Elimina">✕</button></div></td></tr>`).join('')||`<tr><td colspan="7" class="mut">Nessuna voce. Aggiungine una qui sopra o memorizzala mentre fai un preventivo.</td></tr>`}
+
+/* ---------- CLIENTI ---------- */
+const CF=[['nome','Nome o ragione sociale *'],['piva','P.IVA / Codice fiscale'],['indirizzo','Indirizzo'],['email','Email'],['telefono','Telefono']];
+function vClients(){const c=db.clients.find(x=>x.id===editId)||{};
+  return `<h2>Clienti</h2><p class="mut">I clienti vengono salvati qui anche in automatico quando salvi un preventivo.</p>
+  <div class="card"><h3>${editId?'Modifica cliente':'Nuovo cliente'}</h3><div class="grid">${CF.map(([k,l])=>`<div${k==='nome'||k==='indirizzo'?' class="span2"':''}><label for="k_${k}">${l}</label><input id="k_${k}" value="${esc(c[k])}"></div>`).join('')}</div>
+  <div class="toolbar" style="margin:14px 0 0"><button class="btn pri" data-a="savecli">${editId?'Salva modifiche':'+ Aggiungi cliente'}</button>${editId?'<button class="btn" data-a="canceledit">Annulla</button>':''}</div></div>
+  <div class="card"><div class="toolbar"><input id="cs" placeholder="Cerca cliente"></div><table class="list stack"><thead><tr><th>Nome</th><th>P.IVA / CF</th><th>Email</th><th>Telefono</th><th class="num">Preventivi</th><th></th></tr></thead><tbody id="ctb"></tbody></table></div>`}
+function cliRows(){const s=norm($('cs')?.value);
+  $('ctb').innerHTML=db.clients.filter(x=>!s||norm(x.nome+' '+x.piva+' '+x.email).includes(s)).sort((a,b)=>a.nome.localeCompare(b.nome)).map(x=>`<tr><td><b>${esc(x.nome)}</b><br><span class="mut">${esc(x.indirizzo)}</span></td><td>${esc(x.piva)}</td><td>${esc(x.email)}</td><td>${esc(x.telefono)}</td><td class="num">${db.quotes.filter(q=>norm(q.cliente.nome)===norm(x.nome)).length}</td><td><div class="racts"><button class="btn sm" data-a="quotecli" data-id="${x.id}">Nuovo preventivo</button><button class="btn sm" data-a="editcli" data-id="${x.id}">Modifica</button><button class="btn sm del" data-a="delcli" data-id="${x.id}" aria-label="Elimina">✕</button></div></td></tr>`).join('')||`<tr><td colspan="6" class="mut">Nessun cliente.</td></tr>`}
+
+/* ---------- IMPOSTAZIONI ---------- */
+const SF=[['ragione','Ragione sociale / Nome ditta'],['piva','P.IVA / Codice fiscale'],['indirizzo','Indirizzo'],['email','Email'],['telefono','Telefono'],['iban','IBAN (per i pagamenti)']];
+function vSettings(){const s=db.settings;
+  return `<h2>Impostazioni</h2><div class="card"><h3>La tua azienda</h3><p class="mut">Questi dati compaiono in alto su ogni preventivo stampato.</p><div class="grid">${SF.map(([k,l])=>`<div${k==='ragione'||k==='indirizzo'?' class="span2"':''}><label for="s_${k}">${l}</label><input id="s_${k}" data-s="${k}" value="${esc(s[k])}"></div>`).join('')}</div></div>
+  <div class="card"><h3>Valori predefiniti</h3><div class="grid">
+   <div><label for="s_iva">IVA predefinita</label><select id="s_iva" data-s="ivaDefault">${opts(IVA.map(String),String(s.ivaDefault),x=>x+'%')}</select></div>
+   <div><label for="s_val">Validità preventivo (giorni)</label><input id="s_val" type="number" data-s="validita" value="${esc(s.validita)}"></div>
+   <div class="span2"><label for="s_pag">Condizioni di pagamento</label><textarea id="s_pag" data-s="pagamento">${esc(s.pagamento)}</textarea></div>
+   <div class="span2"><label for="s_note">Note fisse (compaiono su ogni preventivo nuovo)</label><textarea id="s_note" data-s="note">${esc(s.note)}</textarea></div>
+  </div><p class="mut">Le modifiche si salvano da sole.</p></div>
+  <div class="card"><h3>Database su GitHub</h3><p class="mut">Collega l'app a un repository GitHub: ogni salvataggio viene scritto nel file <b>dati/${esc(ghPath().slice(5))}</b> del repository, così ritrovi i tuoi preventivi da qualsiasi computer. Ogni utente ha il suo file. Si imposta una volta sola su ogni dispositivo.</p>
+   <div class="grid">
+    <div><label for="g_user">Il tuo nome utente *</label><input id="g_user" value="${esc(gh.user)}" placeholder="Es. mario"></div>
+    <div><label for="g_owner">Proprietario GitHub *</label><input id="g_owner" value="${esc(gh.owner)}" placeholder="Il nome dell'account GitHub"></div>
+    <div><label for="g_repo">Repository dei dati *</label><input id="g_repo" value="${esc(gh.repo)}" placeholder="Es. preventivi-dati"></div>
+    <div><label for="g_branch">Branch</label><input id="g_branch" value="${esc(gh.branch||'main')}"></div>
+    <div class="span2"><label for="g_token">Token di accesso GitHub *</label><input id="g_token" type="password" value="${esc(gh.token)}" placeholder="github_pat_…" autocomplete="off"></div>
+   </div>
+   <p class="mut">Stato: <b>${ghOn()?'collegato':'non collegato'}</b>. Il token resta salvato solo in questo browser.</p>
+   <div class="toolbar" style="margin:0"><button class="btn pri" data-a="ghconnect">Collega e carica i dati</button>${ghOn()?'<button class="btn" data-a="ghsync">Ricarica da GitHub</button><button class="btn del" data-a="ghoff">Scollega</button>':''}</div></div>
+  <div class="card"><h3>Copia di sicurezza</h3><p class="mut">Per ora i dati restano in questo browser. Copia il backup e conservalo, oppure incollalo qui sotto per ripristinarlo su un altro computer.</p>
+   <textarea id="bk" style="min-height:110px;font:13px ui-monospace,monospace" placeholder="Il backup apparirà qui"></textarea>
+   <div class="toolbar" style="margin:10px 0 0"><button class="btn" data-a="exp">Genera backup</button><button class="btn" data-a="copy">Copia</button><button class="btn" data-a="imp">Ripristina da testo</button><button class="btn del" data-a="wipe">Cancella tutto</button></div></div>`}
+
+/* ---------- STAMPA ---------- */
+function printQuote(q){const s=db.settings,t=calc(q),sc=q.righe.some(r=>num(r.sconto));const sca=new Date(q.data+'T00:00');sca.setDate(sca.getDate()+num(q.validita));const c=q.cliente;
+  $('print').innerHTML=`<div class="p-head"><div><h1>${esc(s.ragione||'La tua azienda')}</h1>${esc(s.indirizzo)}<br>${s.piva?'P.IVA '+esc(s.piva)+'<br>':''}${esc([s.telefono,s.email].filter(Boolean).join(' · '))}</div>
+  <div class="p-box"><b>Spett.le ${esc(c.nome)}</b><br>${esc(c.indirizzo)}${c.piva?'<br>P.IVA/CF '+esc(c.piva):''}${c.email?'<br>'+esc(c.email):''}</div></div>
+  <h2 style="font-size:16pt">Preventivo n. ${esc(label(q))} del ${fdate(q.data)}</h2>${q.oggetto?`<p><b>Oggetto:</b> ${esc(q.oggetto)}</p>`:''}
+  <table class="p-tab"><thead><tr><th>#</th><th>Descrizione</th><th>U.M.</th><th class="n">Q.tà</th><th class="n">Prezzo unit.</th>${sc?'<th class="n">Sconto</th>':''}<th class="n">IVA</th><th class="n">Importo</th></tr></thead><tbody>
+  ${q.righe.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.desc)}</td><td>${esc(r.um)}</td><td class="n">${num(r.qta).toLocaleString('it-IT')}</td><td class="n">${eur(num(r.prezzo))}</td>${sc?`<td class="n">${num(r.sconto)?num(r.sconto)+'%':''}</td>`:''}<td class="n">${num(r.iva)}%</td><td class="n">${eur(rowNet(r))}</td></tr>`).join('')}</tbody></table>
+  <div class="p-tot"><div><span>Imponibile</span><span>${eur(t.imp)}</span></div>${Object.entries(t.per).map(([k,v])=>`<div><span>IVA ${k}% su ${eur(v.imp)}</span><span>${eur(v.iva)}</span></div>`).join('')}<div class="b"><span>TOTALE</span><span>${eur(t.tot)}</span></div></div>
+  ${q.pagamento?`<p><b>Pagamento:</b> ${esc(q.pagamento)}${s.iban?' · IBAN '+esc(s.iban):''}</p>`:''}${q.consegna?`<p><b>Tempi:</b> ${esc(q.consegna)}</p>`:''}${q.note?`<p><b>Note:</b> ${esc(q.note)}</p>`:''}
+  <p>Il presente preventivo è valido fino al ${sca.toLocaleDateString('it-IT')}.</p>
+  <div class="p-sign"><div>Luogo e data</div><div>Timbro e firma per accettazione</div></div>`;
+  try{window.print()}catch(e){}
+}
+
+/* ---------- EVENTI ---------- */
+function demo(){const it=[['Manodopera operaio specializzato','ore',35,22,'Manodopera'],['Posa piastrelle pavimento','m²',28,10,'Lavori'],['Fornitura piastrelle gres 60x60','m²',32,10,'Materiali'],['Smaltimento macerie','a corpo',250,22,'Servizi'],['Sopralluogo tecnico','a corpo',80,22,'Servizi']];
+  it.forEach(([d,u,p,v,c],k)=>db.items.push({id:uid(),codice:'',desc:d,um:u,prezzo:p,iva:v,sconto:0,categoria:c,uses:5-k}));
+  db.clients.push({id:uid(),nome:'Mario Rossi',piva:'RSSMRA80A01H501U',indirizzo:'Via Roma 12, Milano',email:'mario.rossi@example.com',telefono:''});
+  const q={id:uid(),anno:new Date().getFullYear(),numero:nextNumber(new Date().getFullYear()),data:today(),validita:30,stato:'inviato',cliente:clone(db.clients.at(-1)),oggetto:'Rifacimento pavimento soggiorno (esempio)',righe:[{id:uid(),desc:'Fornitura piastrelle gres 60x60',um:'m²',qta:25,prezzo:32,sconto:0,iva:10},{id:uid(),desc:'Posa piastrelle pavimento',um:'m²',qta:25,prezzo:28,sconto:0,iva:10},{id:uid(),desc:'Smaltimento macerie',um:'a corpo',qta:1,prezzo:250,sconto:10,iva:22}],pagamento:db.settings.pagamento,consegna:'10 giorni lavorativi',note:''};
+  delete q.cliente.id;q.totale=calc(q).tot;db.quotes.push(q);save();render();toast('Esempio caricato')}
+const acts={
+  new:newQuote,demo,addrow(){cur.righe.push(newRow());refresh();const ins=document.querySelectorAll('#rows [data-r=desc]');ins[ins.length-1].focus()},
+  additem(e,b){const it=db.items.find(x=>x.id===b.dataset.id);it.uses=(it.uses||0)+1;save();const l=cur.righe.at(-1);const r=newRow(it);if(l&&!l.desc.trim()&&!num(l.prezzo))cur.righe[cur.righe.length-1]=r;else cur.righe.push(r);refresh();toast('Aggiunta: '+it.desc+' (controlla la quantità)')},
+  memo(e,b,i){memo(i)},delrow(e,b,i){cur.righe.splice(i,1);if(!cur.righe.length)cur.righe.push(newRow());refresh()},
+  up(e,b,i){if(i>0){[cur.righe[i-1],cur.righe[i]]=[cur.righe[i],cur.righe[i-1]];refresh()}},
+  savequote(){saveQuote(false)},preview(){printQuote(cur)},cancel(){ask('Uscire senza salvare le modifiche?',()=>go('list'),'Esci')},
+  open(e,b){cur=clone(db.quotes.find(x=>x.id===b.dataset.id));go('edit')},
+  dup(e,b){const y=new Date().getFullYear();cur={...clone(db.quotes.find(x=>x.id===b.dataset.id)),id:null,anno:y,numero:nextNumber(y),data:today(),stato:'bozza'};cur.righe.forEach(r=>r.id=uid());go('edit');toast('Copia creata: modificala e salvala')},
+  print(e,b){printQuote(db.quotes.find(x=>x.id===b.dataset.id))},
+  delq(e,b){const q=db.quotes.find(x=>x.id===b.dataset.id);ask(`Eliminare il preventivo ${label(q)} di ${q.cliente.nome}?`,()=>{db.quotes=db.quotes.filter(x=>x!==q);save();render()},'Elimina')},
+  saveitem(){const d=$('i_desc').value.trim();if(!d)return toast('Scrivi la descrizione');const v={desc:d,codice:$('i_codice').value.trim(),categoria:$('i_categoria').value.trim(),um:$('i_um').value,prezzo:num($('i_prezzo').value),iva:num($('i_iva').value),sconto:num($('i_sconto').value)};
+    const ex=db.items.find(x=>x.id===editId);if(ex)Object.assign(ex,v);else{if(findItem(d))return toast('Questa voce esiste già');db.items.push({id:uid(),uses:0,...v})}editId=null;save();render();toast('Voce salvata')},
+  edititem(e,b){editId=b.dataset.id;render();scrollTo(0,0)},canceledit(){editId=null;render()},
+  delitem(e,b){const it=db.items.find(x=>x.id===b.dataset.id);ask(`Eliminare la voce "${it.desc}"? I preventivi già fatti non cambiano.`,()=>{db.items=db.items.filter(x=>x!==it);save();render()},'Elimina')},
+  savecli(){const v={};CF.forEach(([k])=>v[k]=$('k_'+k).value.trim());if(!v.nome)return toast('Scrivi il nome');const ex=db.clients.find(x=>x.id===editId);if(ex)Object.assign(ex,v);else db.clients.push({id:uid(),...v});editId=null;save();render();toast('Cliente salvato')},
+  editcli(e,b){editId=b.dataset.id;render();scrollTo(0,0)},
+  delcli(e,b){const c=db.clients.find(x=>x.id===b.dataset.id);ask(`Eliminare ${c.nome} dalla rubrica? I preventivi restano.`,()=>{db.clients=db.clients.filter(x=>x!==c);save();render()},'Elimina')},
+  quotecli(e,b){const c=db.clients.find(x=>x.id===b.dataset.id);newQuote();Object.assign(cur.cliente,{nome:c.nome,piva:c.piva,indirizzo:c.indirizzo,email:c.email,telefono:c.telefono});render()},
+  exp(){$('bk').value=JSON.stringify(db);toast('Backup generato: premi Copia')},
+  copy(){const t=$('bk').value||JSON.stringify(db);$('bk').value=t;navigator.clipboard?.writeText(t).then(()=>toast('Copiato'),()=>{$('bk').select();toast('Seleziona e copia a mano')})},
+  imp(){let d;try{d=JSON.parse($('bk').value);if(!Array.isArray(d.quotes))throw 0}catch(e){return toast('Il testo incollato non è un backup valido')}ask('Sostituire tutti i dati attuali con il backup?',()=>{const b=blank();db={...b,...d,settings:{...b.settings,...d.settings}};save();toast('Dati ripristinati');go('list')},'Ripristina')},
+  async ghconnect(){const v={user:$('g_user').value.trim(),owner:$('g_owner').value.trim(),repo:$('g_repo').value.trim(),branch:$('g_branch').value.trim()||'main',token:$('g_token').value.trim()};
+    if(!v.user||!v.owner||!v.repo||!v.token)return toast('Compila tutti i campi con l\'asterisco');
+    const hadData=db.quotes.length||db.items.length;gh={...v,ready:false};
+    try{toast('Collegamento a GitHub…');const r=await ghRead();
+      const finish=async remoteWins=>{gh.ready=true;try{localStorage.setItem(GHK,JSON.stringify(gh))}catch(e){}
+        if(r&&remoteWins){await ghPull();toast('Collegato: dati caricati da GitHub')}else{ghSha=r?r.sha:null;if(await ghPush(true))toast('Collegato: i dati di questo browser sono ora su GitHub')}render()};
+      if(r&&hadData)ask('Su GitHub ci sono già dei dati per questo utente. Usare quelli di GitHub (consigliato)? Se annulli, nessun dato viene sovrascritto.',()=>finish(true),'Usa i dati di GitHub');
+      else finish(true)}
+    catch(e){gh.ready=false;toast('GitHub: '+(e.message||'impossibile collegarsi'))}},
+  async ghsync(){try{await ghPull();render();toast('Dati ricaricati da GitHub')}catch(e){toast('GitHub: '+e.message)}},
+  ghoff(){ask('Scollegare GitHub da questo browser? I dati su GitHub restano.',()=>{gh={};ghSha=null;try{localStorage.removeItem(GHK)}catch(e){}render();ghStatus('')},'Scollega')},
+  wipe(){ask('Cancellare TUTTI i preventivi, voci e clienti? Non si può annullare.',()=>{db=blank();save();go('list')},'Cancella tutto')}
+};
+document.addEventListener('click',e=>{const nb=e.target.closest('nav button');if(nb){editId=null;nb.dataset.v==='new'?newQuote():go(nb.dataset.v);return}
+  const b=e.target.closest('[data-a]');if(!b)return;const row=b.closest('.row');acts[b.dataset.a]?.(e,b,row?+row.dataset.i:-1)});
+document.addEventListener('input',e=>{const t=e.target,row=t.closest('.row');
+  if(t.id==='qs'){qs=t.value;listRows()}else if(t.id==='is')itemRows();else if(t.id==='cs')cliRows();
+  else if(t.dataset.s){db.settings[t.dataset.s]=t.dataset.s==='ivaDefault'||t.dataset.s==='validita'?num(t.value):t.value;save()}
+  else if(t.dataset.q)cur[t.dataset.q]=t.value;
+  else if(t.dataset.c)setCli(t.dataset.c,t.value);
+  else if(row&&t.dataset.r){const i=+row.dataset.i,r=cur.righe[i];r[t.dataset.r]=t.value;row.querySelector('.rt').textContent=eur(rowNet(r));
+    if(t.dataset.r==='desc'){if(findItem(t.value)&&t.tagName==='INPUT'&&e.inputType!=='insertText'&&e.inputType!=='deleteContentBackward'){pickItem(i,t.value);return}row.querySelector('.memo').textContent=findItem(t.value)?'✓ Salvata':'⭐ Memorizza'}totals()}});
+document.addEventListener('change',e=>{const t=e.target;
+  if(t.id==='qf'){qf=t.value;listRows()}
+  else if(t.dataset.stato){const q=db.quotes.find(x=>x.id===t.dataset.stato);q.stato=t.value;t.className='badge s-'+t.value;save();render()}
+  else if(t.dataset.r==='desc'){const row=t.closest('.row');pickItem(+row.dataset.i,t.value)}});
+render();
+if(ghOn())ghPull().then(render).catch(e=>{ghStatus('⚠ GitHub non raggiungibile','err');toast('GitHub: '+e.message+'. Uso i dati salvati in questo browser.')});
+}
+</script>
+</body>
+</html>
