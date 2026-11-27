@@ -343,6 +343,9 @@ function vSettings(){const s=db.settings;
    </div>
    <p class="mut">Stato: <b>${ghOn()?'collegato':'non collegato'}</b>. Il token resta salvato solo in questo browser.</p>
    <div class="toolbar" style="margin:0"><button class="btn pri" data-a="ghconnect">Collega e carica i dati</button>${ghOn()?'<button class="btn" data-a="ghsync">Ricarica da GitHub</button><button class="btn del" data-a="ghoff">Scollega</button>':''}</div></div>
+  <div class="card"><h3>Messaggio di invio</h3><p class="mut">Il testo che accompagna il PDF su WhatsApp e nelle email. Puoi usare: {cliente} {numero} {data} {oggetto} {totale} {imponibile} {scadenza} {ditta} {telefono} {email}. Le righe con un campo vuoto vengono tolte da sole.</p>
+   <textarea id="s_msg" data-s="msg" style="min-height:220px">${esc(s.msg||MSG_DEF)}</textarea>
+   <div class="toolbar" style="margin:10px 0 0"><button class="btn" data-a="msgreset">Ripristina testo iniziale</button></div></div>
   <details class="card"><summary><b>Per l'amministratore: crea il link di attivazione per una ditta</b></summary>
    <p class="mut">Crea prima il repository privato e il token della ditta (vedi README). Il link contiene il token: mandalo solo alla ditta, in privato.</p>
    <div class="grid">
@@ -400,7 +403,10 @@ async function makePdf(q){const J=await pdfLib(),doc=new J({unit:'mm',format:'a4
   para('Pagamento',q.pagamento&&(q.pagamento+(s.iban?' - IBAN '+s.iban:'')));para('Tempi',q.consegna);para('Note',q.note);para('Validità','il presente preventivo è valido fino al '+scadenza(q));
   if(y>255){doc.addPage();y=M}y+=18;doc.setLineWidth(.2);doc.line(M,y,M+70,y);doc.line(W-M-70,y,W-M,y);doc.setFontSize(8);doc.text('Luogo e data',M,y+4);doc.text('Timbro e firma per accettazione',W-M-70,y+4);
   return new File([doc.output('blob')],pdfName(q),{type:'application/pdf'})}
-const msgText=q=>{const s=db.settings;return `Gentile ${q.cliente.nome},\nle invio il preventivo n. ${label(q)} del ${fdate(q.data)}${q.oggetto?' per: '+q.oggetto:''}.\n\nTotale: ${eur(calc(q).tot).replace(/ /g,' ')} IVA inclusa\nValido fino al: ${scadenza(q)}\n\nResto a disposizione per qualsiasi chiarimento.\nCordiali saluti\n${s.ragione||''}${s.telefono?'\n'+s.telefono:''}`};
+const MSG_DEF="Gentile {cliente},\nle invio il preventivo n. {numero} del {data}.\nOggetto: {oggetto}\n\nTotale: {totale} IVA inclusa\nValido fino al: {scadenza}\n\nResto a disposizione per qualsiasi chiarimento.\nCordiali saluti\n{ditta}\n{telefono}";
+const msgText=q=>{const s=db.settings,t=calc(q),e=n=>eur(n).replace(/[  ]/g,' ');
+  const v={cliente:q.cliente.nome,numero:label(q),data:fdate(q.data),oggetto:q.oggetto,totale:e(t.tot),imponibile:e(t.imp),scadenza:scadenza(q),ditta:s.ragione,telefono:s.telefono,email:s.email};
+  return(s.msg||MSG_DEF).split('\n').filter(l=>{const ks=[...l.matchAll(/\{(\w+)\}/g)].map(m=>m[1]);return!ks.length||ks.some(k=>v[k])}).map(l=>l.replace(/\{(\w+)\}/g,(m,k)=>k in v?(v[k]||''):m)).join('\n').replace(/\n{3,}/g,'\n\n').trim()};
 const waPhone=p=>{let d=String(p||'').replace(/[^\d+]/g,'');if(d.startsWith('+'))d=d.slice(1);else if(d.startsWith('00'))d=d.slice(2);else if(d&&d.length<=10)d='39'+d;return d};
 function download(f){const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
 function markSent(q){q.inviato=new Date().toISOString();if(q.stato==='bozza')q.stato='inviato';save();if(view==='list')render()}
@@ -410,6 +416,7 @@ function sendQuote(q){freshContact(q);const c=q.cliente,s=db.settings;
   $('modal').innerHTML=`<div class="modal"><div class="card send"><h3>Invia il preventivo ${esc(label(q))}</h3>
    <p class="mut" style="margin-bottom:8px">A <b>${esc(c.nome)}</b>. Controlla numero ed email:</p>
    <div class="grid"><div><label for="sd_tel">Telefono / WhatsApp</label><input id="sd_tel" type="tel" value="${esc(c.telefono)}" placeholder="Es. 333 1234567"></div><div><label for="sd_mail">Email</label><input id="sd_mail" type="email" value="${esc(c.email)}"></div></div>
+   <div style="margin-top:12px"><label for="sd_msg">Messaggio (didascalia del PDF) — puoi modificarlo</label><textarea id="sd_msg" style="min-height:150px">${esc(msgText(q))}</textarea></div>
    <div class="sendg">${canShare?`
     <button class="btn wa" data-s="share-wa">Invia il PDF su WhatsApp<small>nel menu scegli WhatsApp, poi la chat del cliente</small></button>
     <button class="btn linkish" data-s="openchat">Il cliente non è nella tua rubrica del telefono? Tocca qui prima: si apre la sua chat. Poi torna qui e premi il pulsante verde.</button>
@@ -420,6 +427,7 @@ function sendQuote(q){freshContact(q);const c=q.cliente,s=db.settings;
    <p class="mut" id="sendinfo"></p>
    <div class="toolbar" style="justify-content:flex-end;margin:0"><button class="btn" id="m-no">Chiudi</button></div></div></div>`;
   $('m-no').onclick=()=>$('modal').innerHTML='';
+  let pdfP=makePdf(q),pdfMail=c.email;pdfP.catch(()=>{});
   const contact=()=>{const tel=$('sd_tel').value.trim(),mail=$('sd_mail').value.trim();if(tel!==(c.telefono||'')||mail!==(c.email||'')){c.telefono=tel;c.email=mail;const rc=db.clients.find(x=>norm(x.nome)===norm(c.nome));if(rc){rc.telefono=tel;rc.email=mail}save()}};
   const waUrl=t=>`https://wa.me/${waPhone(c.telefono)}?text=${encodeURIComponent(t)}`;
   const after=(f,where)=>{markSent(q);$('modal').querySelector('.card').innerHTML=`<h3>Ultimo passo: allega il PDF</h3>
@@ -430,9 +438,11 @@ function sendQuote(q){freshContact(q);const c=q.cliente,s=db.settings;
   $('modal').querySelectorAll('[data-s]').forEach(b=>b.onclick=async()=>{const how=b.dataset.s;contact();
     if(how==='openchat'){if(!waPhone(c.telefono))return toast('Scrivi prima il numero del cliente');window.open(waUrl(`Buongiorno ${c.nome}, ${s.ragione?'sono '+s.ragione+'. ':''}Le invio qui di seguito il preventivo n. ${label(q)}.`),'_blank');$('sendinfo').innerHTML='Chat aperta. Ora torna qui e premi <b>Invia il PDF su WhatsApp</b>: troverai il cliente in cima alle chat recenti.';return}
     b.disabled=true;$('sendinfo').textContent='Preparo il PDF…';
-    try{const f=await makePdf(q),text=msgText(q);
+    try{if(c.email!==pdfMail){pdfMail=c.email;pdfP=makePdf(q)}const text=$('sd_msg').value.trim();
+      if(how.startsWith('share')&&navigator.clipboard)navigator.clipboard.writeText(text).catch(()=>{});
+      const f=await pdfP;
       if(how.startsWith('share')){try{await navigator.share(how==='share-mail'?{files:[f],title:'Preventivo n. '+label(q),text}:{files:[f],text})}catch(e){if(e.name==='AbortError'){$('sendinfo').textContent='Invio annullato.';b.disabled=false;return}throw e}
-        $('modal').innerHTML='';markSent(q);toast('Preventivo condiviso con il PDF allegato');return}
+        $('modal').innerHTML='';markSent(q);toast(how==='share-wa'?'Inviato. Se su WhatsApp manca il testo: tieni premuto nel messaggio e scegli Incolla':'Preventivo condiviso con il PDF allegato');return}
       download(f);
       if(how==='pdf'){$('modal').innerHTML='';toast('PDF scaricato: '+f.name);return}
       if(how==='wa')window.open(waUrl(text),'_blank');
@@ -481,6 +491,7 @@ const acts={
   umdel(e,b){const l=[...umList()],k=+b.dataset.k,u=l[k],n=db.items.filter(x=>x.um===u).length;if(l.length<=1)return toast('Deve restare almeno un\'unità');
     ask(n?`"${u}" è usata da ${n} voci salvate: le voci la mantengono, ma non sarà più tra le scelte. Eliminarla?`:`Eliminare l'unità "${u}"?`,()=>{l.splice(k,1);db.settings.um=l;save();render()},'Elimina')},
   umreset(){ask('Ripristinare l\'elenco iniziale delle unità di misura? Le voci salvate non cambiano.',()=>{delete db.settings.um;save();render()},'Ripristina')},
+  msgreset(){delete db.settings.msg;save();render();toast('Testo ripristinato')},
   nologo(){delete db.settings.logo;save();render()},
   async ghsync(){try{await ghPull();render();toast('Dati ricaricati da GitHub')}catch(e){toast('GitHub: '+e.message)}},
   ghoff(){ask('Scollegare GitHub da questo browser? I dati su GitHub restano.',()=>{gh={};ghSha=null;try{localStorage.removeItem(GHK)}catch(e){}render();ghStatus('')},'Scollega')},
