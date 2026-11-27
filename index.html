@@ -82,6 +82,18 @@ table.list{width:100%;border-collapse:collapse}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:10;padding:16px}
 .modal .card{max-width:440px;width:100%}
 @media(max-width:600px){table{font-size:14px}.stack thead{display:none}.stack tr{display:grid;padding-block:10px;border-bottom:1px solid var(--line)}.stack td{display:flow-root;border:0;padding:3px 0;padding-inline-start:7em;text-align:start!important}.stack td::before{content:attr(data-l);float:inline-start;width:6.5em;margin-inline-start:-7em;color:var(--mut);font-size:13px}.stack td:empty{display:none}h2{font-size:26px}}
+/* pulsanti grandi su telefono */
+.m-only{display:none}
+@media(max-width:600px){.m-only{display:inline}
+ .stack tr{padding-block:14px}
+ .stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.stat{padding:10px}.stat b{font-size:17px}.stat span{font-size:12px;line-height:1.2;display:block}
+ .stack td.acts{padding:12px 0 4px}.stack td.acts::before{display:none}
+ .acts .racts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+ .acts .btn.sm{min-height:48px;font-size:16px;padding:10px 12px;white-space:nowrap}
+ .acts .racts .pri{grid-column:1/-1}
+ .stack td .badge{min-height:40px;font-size:15px;padding:6px 12px}
+ .row .racts{gap:10px}.row .racts .btn.sm{min-height:46px;font-size:15px;flex:1}
+ .umc .btn.sm{min-height:40px}}
 @media(prefers-reduced-motion:reduce){.toast{transition:none}}
 /* stampa */
 #print{display:none}
@@ -224,7 +236,7 @@ function listRows(){
   const list=db.quotes.filter(q=>(!qf||q.stato===qf)&&(!s||norm(q.cliente.nome+' '+q.oggetto+' '+label(q)).includes(s))).sort((a,b)=>b.anno-a.anno||b.numero-a.numero);
   $('tb').innerHTML=list.map(q=>`<tr><td><b>${esc(label(q))}</b></td><td>${fdate(q.data)}</td><td>${esc(q.cliente.nome)}</td><td>${esc(q.oggetto)}</td><td class="num">${eur(q.totale)}</td>
   <td><select class="badge s-${q.stato}" data-stato="${q.id}">${Object.entries(STATI).map(([k,v])=>`<option value="${k}"${q.stato===k?' selected':''}>${v}</option>`).join('')}</select></td>
-  <td><div class="racts"><button class="btn sm" data-a="open" data-id="${q.id}">Apri</button><button class="btn sm" data-a="dup" data-id="${q.id}">Duplica</button><button class="btn sm pri" data-a="send" data-id="${q.id}">Invia</button><button class="btn sm" data-a="print" data-id="${q.id}">Stampa</button><button class="btn sm del" data-a="delq" data-id="${q.id}" aria-label="Elimina">✕</button></div></td></tr>`).join('')||`<tr><td colspan="7" class="mut">Nessun preventivo trovato.</td></tr>`}
+  <td class="acts"><div class="racts"><button class="btn sm pri" data-a="send" data-id="${q.id}">Invia</button><button class="btn sm" data-a="open" data-id="${q.id}">Apri</button><button class="btn sm" data-a="dup" data-id="${q.id}">Duplica</button><button class="btn sm" data-a="print" data-id="${q.id}">Stampa</button><button class="btn sm del" data-a="delq" data-id="${q.id}" aria-label="Elimina">✕<span class="m-only"> Elimina</span></button></div></td></tr>`).join('')||`<tr><td colspan="7" class="mut">Nessun preventivo trovato.</td></tr>`}
 
 /* ---------- EDITOR ---------- */
 const newRow=it=>({id:uid(),desc:it?it.desc:'',um:it?it.um:'pz',qta:1,prezzo:it?it.prezzo:'',sconto:it?it.sconto||0:0,iva:it?it.iva:db.settings.ivaDefault});
@@ -262,7 +274,7 @@ function rowHtml(r,i){const inCat=!!findItem(r.desc);const io=IVA.map(String);
   <div><label>Sconto %</label><input inputmode="decimal" data-r="sconto" value="${esc(r.sconto)}"></div>
   <div><label>IVA</label><select data-r="iva">${opts(io,String(num(r.iva)),x=>x+'%')}</select></div>
   <div><label>Totale riga</label><div class="rt">${eur(rowNet(r))}</div></div>
-  <div class="racts"><button class="btn sm memo" data-a="memo" title="Salva tra le mie voci">${inCat?'✓ Salvata':'⭐ Memorizza'}</button><button class="btn sm" data-a="up" aria-label="Sposta su">↑</button><button class="btn sm del" data-a="delrow" aria-label="Elimina voce">✕</button></div></div>`}
+  <div class="racts"><button class="btn sm memo" data-a="memo" title="Salva tra le mie voci">${inCat?'✓ Salvata':'⭐ Memorizza'}</button><button class="btn sm" data-a="up" aria-label="Sposta su">↑</button><button class="btn sm del" data-a="delrow" aria-label="Elimina voce">✕<span class="m-only"> Elimina</span></button></div></div>`}
 function refresh(){
   const top=[...db.items].sort((a,b)=>(b.uses||0)-(a.uses||0)).slice(0,10);
   $('chips').innerHTML=top.length?`<p class="mut" style="margin:0 0 6px">Le tue voci più usate, tocca per aggiungere:</p><div class="chips">${top.map(it=>`<button class="chip" data-a="additem" data-id="${it.id}">+ ${esc(it.desc)} <small>${eur(num(it.prezzo))}/${esc(it.um)}</small></button>`).join('')}</div>`:`<p class="mut">Suggerimento: quando scrivi una voce che usi spesso, premi ⭐ Memorizza. La ritroverai qui.</p>`;
@@ -309,7 +321,7 @@ function vItems(){const it=db.items.find(x=>x.id===editId)||{um:'pz',iva:db.sett
   <div class="card"><div class="toolbar"><input id="is" placeholder="Cerca tra le voci"></div>
   <table class="list stack"><thead><tr><th>Descrizione</th><th>Categoria</th><th>U.M.</th><th class="num">Prezzo</th><th class="num">IVA</th><th class="num">Usata</th><th></th></tr></thead><tbody id="itb"></tbody></table></div>`}
 function itemRows(){const s=norm($('is')?.value);
-  $('itb').innerHTML=db.items.filter(x=>!s||norm(x.desc+' '+x.categoria+' '+x.codice).includes(s)).sort((a,b)=>(a.categoria||'').localeCompare(b.categoria||'')||a.desc.localeCompare(b.desc)).map(x=>`<tr><td>${x.codice?`<span class="mut">${esc(x.codice)}</span> `:''}${esc(x.desc)}</td><td>${esc(x.categoria)}</td><td>${esc(x.um)}</td><td class="num">${eur(num(x.prezzo))}</td><td class="num">${esc(num(x.iva))}%</td><td class="num">${x.uses||0} volte</td><td><div class="racts"><button class="btn sm" data-a="edititem" data-id="${x.id}">Modifica</button><button class="btn sm del" data-a="delitem" data-id="${x.id}" aria-label="Elimina">✕</button></div></td></tr>`).join('')||`<tr><td colspan="7" class="mut">Nessuna voce. Aggiungine una qui sopra o memorizzala mentre fai un preventivo.</td></tr>`}
+  $('itb').innerHTML=db.items.filter(x=>!s||norm(x.desc+' '+x.categoria+' '+x.codice).includes(s)).sort((a,b)=>(a.categoria||'').localeCompare(b.categoria||'')||a.desc.localeCompare(b.desc)).map(x=>`<tr><td>${x.codice?`<span class="mut">${esc(x.codice)}</span> `:''}${esc(x.desc)}</td><td>${esc(x.categoria)}</td><td>${esc(x.um)}</td><td class="num">${eur(num(x.prezzo))}</td><td class="num">${esc(num(x.iva))}%</td><td class="num">${x.uses||0} volte</td><td class="acts"><div class="racts"><button class="btn sm" data-a="edititem" data-id="${x.id}">Modifica</button><button class="btn sm del" data-a="delitem" data-id="${x.id}" aria-label="Elimina">✕<span class="m-only"> Elimina</span></button></div></td></tr>`).join('')||`<tr><td colspan="7" class="mut">Nessuna voce. Aggiungine una qui sopra o memorizzala mentre fai un preventivo.</td></tr>`}
 
 /* ---------- CLIENTI ---------- */
 const CF=[['nome','Nome o ragione sociale *'],['piva','P.IVA / Codice fiscale'],['indirizzo','Indirizzo'],['email','Email'],['telefono','Telefono']];
@@ -319,7 +331,7 @@ function vClients(){const c=db.clients.find(x=>x.id===editId)||{};
   <div class="toolbar" style="margin:14px 0 0"><button class="btn pri" data-a="savecli">${editId?'Salva modifiche':'+ Aggiungi cliente'}</button>${editId?'<button class="btn" data-a="canceledit">Annulla</button>':''}</div></div>
   <div class="card"><div class="toolbar"><input id="cs" placeholder="Cerca cliente"></div><table class="list stack"><thead><tr><th>Nome</th><th>P.IVA / CF</th><th>Email</th><th>Telefono</th><th class="num">Preventivi</th><th></th></tr></thead><tbody id="ctb"></tbody></table></div>`}
 function cliRows(){const s=norm($('cs')?.value);
-  $('ctb').innerHTML=db.clients.filter(x=>!s||norm(x.nome+' '+x.piva+' '+x.email).includes(s)).sort((a,b)=>a.nome.localeCompare(b.nome)).map(x=>`<tr><td><b>${esc(x.nome)}</b><br><span class="mut">${esc(x.indirizzo)}</span></td><td>${esc(x.piva)}</td><td>${esc(x.email)}</td><td>${esc(x.telefono)}</td><td class="num">${db.quotes.filter(q=>norm(q.cliente.nome)===norm(x.nome)).length}</td><td><div class="racts"><button class="btn sm" data-a="quotecli" data-id="${x.id}">Nuovo preventivo</button><button class="btn sm" data-a="editcli" data-id="${x.id}">Modifica</button><button class="btn sm del" data-a="delcli" data-id="${x.id}" aria-label="Elimina">✕</button></div></td></tr>`).join('')||`<tr><td colspan="6" class="mut">Nessun cliente.</td></tr>`}
+  $('ctb').innerHTML=db.clients.filter(x=>!s||norm(x.nome+' '+x.piva+' '+x.email).includes(s)).sort((a,b)=>a.nome.localeCompare(b.nome)).map(x=>`<tr><td><b>${esc(x.nome)}</b><br><span class="mut">${esc(x.indirizzo)}</span></td><td>${esc(x.piva)}</td><td>${esc(x.email)}</td><td>${esc(x.telefono)}</td><td class="num">${db.quotes.filter(q=>norm(q.cliente.nome)===norm(x.nome)).length}</td><td class="acts"><div class="racts"><button class="btn sm pri" data-a="quotecli" data-id="${x.id}">Nuovo preventivo</button><button class="btn sm" data-a="editcli" data-id="${x.id}">Modifica</button><button class="btn sm del" data-a="delcli" data-id="${x.id}" aria-label="Elimina">✕<span class="m-only"> Elimina</span></button></div></td></tr>`).join('')||`<tr><td colspan="6" class="mut">Nessun cliente.</td></tr>`}
 
 /* ---------- IMPOSTAZIONI ---------- */
 const SF=[['ragione','Ragione sociale / Nome ditta'],['piva','P.IVA / Codice fiscale'],['indirizzo','Indirizzo'],['email','Email'],['telefono','Telefono'],['iban','IBAN (per i pagamenti)']];
@@ -512,7 +524,9 @@ document.addEventListener('change',e=>{const t=e.target;
   if(t.id==='qf'){qf=t.value;listRows()}
   else if(t.dataset.stato){const q=db.quotes.find(x=>x.id===t.dataset.stato);q.stato=t.value;t.className='badge s-'+t.value;save();render()}
   else if(t.dataset.r==='desc'){const row=t.closest('.row');pickItem(+row.dataset.i,t.value)}});
-render();
+const labelCells=()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}};
+const labObs=new MutationObserver(labelCells);labObs.observe($('app'),{childList:true,subtree:true});
+render();labelCells();
 if(!activation()&&ghOn())ghPull().then(render).catch(e=>{ghStatus('⚠ GitHub non raggiungibile','err');toast('GitHub: '+e.message+'. Uso i dati salvati in questo browser.')});
 }
 </script>
