@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+ <rect width="512" height="512" fill="#00463c"/>
+ <path d="M150 104h158l62 62v242a14 14 0 0 1-14 14H150a14 14 0 0 1-14-14V118a14 14 0 0 1 14-14z" fill="#fff"/>
+ <path d="M308 104v48a14 14 0 0 0 14 14h48z" fill="#cfe3d9"/>
+ <rect x="172" y="190" width="120" height="16" rx="8" fill="#9fb9ae"/>
+ <rect x="172" y="226" width="160" height="16" rx="8" fill="#9fb9ae"/>
+ <rect x="172" y="262" width="100" height="16" rx="8" fill="#9fb9ae"/>
+ <circle cx="330" cy="352" r="74" fill="#e6f5c8" stroke="#00463c" stroke-width="12"/>
+ <text x="330" y="380" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="84" fill="#00463c">€</text>
+</svg>
