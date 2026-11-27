@@ -27,6 +27,8 @@ header{background:var(--g);color:#fff;position:sticky;top:0;z-index:5}
 .logo-row{display:flex;gap:16px;align-items:center;margin-bottom:14px;flex-wrap:wrap}.logo-prev{max-width:200px;max-height:80px;border:1px solid var(--line);border-radius:8px;padding:4px;background:#fff}.logo-prev.empty{padding:22px 16px;color:var(--mut);font-size:13px;background:transparent}
 summary{cursor:pointer;min-height:32px}
 .umc{display:inline-flex;align-items:center;gap:2px}.umc .btn.sm{min-height:34px;padding:4px 8px;border:0;background:transparent}
+.sendg{display:grid;gap:8px;margin:12px 0}.sendg .btn{text-align:left;display:flex;flex-direction:column;padding:12px 16px}.sendg small{font-weight:400;font-size:13px;opacity:.8}
+.btn.wa{background:#1f8f4e;color:#fff;border-color:#1f8f4e}
 .ghs{font:500 13px Inter,sans-serif;color:#cfe3d9;margin-left:8px;white-space:nowrap}.ghs.err{color:#ffb4a6}.ghs.ok{color:#e6f5c8}
 nav{display:flex;gap:4px;flex-wrap:wrap}
 nav button{background:transparent;color:#fff;border:0;padding:10px 12px;border-radius:8px;font:600 15px Inter,sans-serif;cursor:pointer;min-height:44px}
@@ -198,7 +200,7 @@ function render(){
   $('bn').textContent=db.settings.ragione||'Preventivi Facili';
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
   $('app').innerHTML=({list:vList,edit:vEdit,items:vItems,clients:vClients,settings:vSettings})[view]();
-  $('foot').innerHTML=view==='edit'?`<div class="foot"><div class="in"><div class="sum" id="fsum"></div><button class="btn" data-a="preview">Anteprima / Stampa</button><button class="btn" data-a="cancel">Annulla</button><button class="btn pri" data-a="savequote">Salva preventivo</button></div></div>`:'';
+  $('foot').innerHTML=view==='edit'?`<div class="foot"><div class="in"><div class="sum" id="fsum"></div><button class="btn" data-a="preview">Anteprima / Stampa</button><button class="btn" data-a="cancel">Annulla</button><button class="btn" data-a="savequote">Salva</button><button class="btn pri" data-a="savesend">Salva e invia</button></div></div>`:'';
   if(view==='edit')refresh();
   if(view==='list')listRows();
   if(view==='items')itemRows();
@@ -221,13 +223,13 @@ function listRows(){
   const list=db.quotes.filter(q=>(!qf||q.stato===qf)&&(!s||norm(q.cliente.nome+' '+q.oggetto+' '+label(q)).includes(s))).sort((a,b)=>b.anno-a.anno||b.numero-a.numero);
   $('tb').innerHTML=list.map(q=>`<tr><td><b>${esc(label(q))}</b></td><td>${fdate(q.data)}</td><td>${esc(q.cliente.nome)}</td><td>${esc(q.oggetto)}</td><td class="num">${eur(q.totale)}</td>
   <td><select class="badge s-${q.stato}" data-stato="${q.id}">${Object.entries(STATI).map(([k,v])=>`<option value="${k}"${q.stato===k?' selected':''}>${v}</option>`).join('')}</select></td>
-  <td><div class="racts"><button class="btn sm" data-a="open" data-id="${q.id}">Apri</button><button class="btn sm" data-a="dup" data-id="${q.id}">Duplica</button><button class="btn sm" data-a="print" data-id="${q.id}">Stampa</button><button class="btn sm del" data-a="delq" data-id="${q.id}" aria-label="Elimina">✕</button></div></td></tr>`).join('')||`<tr><td colspan="7" class="mut">Nessun preventivo trovato.</td></tr>`}
+  <td><div class="racts"><button class="btn sm" data-a="open" data-id="${q.id}">Apri</button><button class="btn sm" data-a="dup" data-id="${q.id}">Duplica</button><button class="btn sm pri" data-a="send" data-id="${q.id}">Invia</button><button class="btn sm" data-a="print" data-id="${q.id}">Stampa</button><button class="btn sm del" data-a="delq" data-id="${q.id}" aria-label="Elimina">✕</button></div></td></tr>`).join('')||`<tr><td colspan="7" class="mut">Nessun preventivo trovato.</td></tr>`}
 
 /* ---------- EDITOR ---------- */
 const newRow=it=>({id:uid(),desc:it?it.desc:'',um:it?it.um:'pz',qta:1,prezzo:it?it.prezzo:'',sconto:it?it.sconto||0:0,iva:it?it.iva:db.settings.ivaDefault});
 function newQuote(){const y=new Date().getFullYear();cur={id:null,anno:y,numero:nextNumber(y),data:today(),validita:db.settings.validita,stato:'bozza',cliente:{nome:'',piva:'',indirizzo:'',email:'',telefono:''},oggetto:'',righe:[newRow()],note:db.settings.note,pagamento:db.settings.pagamento,consegna:''};go('edit')}
 function vEdit(){const q=cur,c=q.cliente;
-  return `<div class="help"><b>Come si fa, in 3 passi:</b><ol><li>Scrivi il nome del cliente (se c'è già in rubrica, i dati si compilano da soli).</li><li>Aggiungi le voci: tocca una delle tue voci salvate, oppure scrivine una nuova e premi <b>⭐ Memorizza</b> per riusarla la prossima volta.</li><li>Premi <b>Salva preventivo</b>, poi <b>Stampa</b> per avere il PDF.</li></ol></div>
+  return `<div class="help"><b>Come si fa, in 3 passi:</b><ol><li>Scrivi il nome del cliente (se c'è già in rubrica, i dati si compilano da soli).</li><li>Aggiungi le voci: tocca una delle tue voci salvate, oppure scrivine una nuova e premi <b>⭐ Memorizza</b> per riusarla la prossima volta.</li><li>Premi <b>Salva e invia</b> per mandarlo al cliente via WhatsApp o email.</li></ol></div>
   <div class="card"><h2>Preventivo n. ${esc(label(q))}</h2><div class="grid">
    <div><label for="e_num">Numero</label><input id="e_num" type="number" min="1" data-q="numero" value="${q.numero}"></div>
    <div><label for="e_data">Data</label><input id="e_data" type="date" data-q="data" value="${esc(q.data)}"></div>
@@ -285,7 +287,7 @@ function saveQuote(andPrint){const q=cur;
   if(!db.clients.some(c=>norm(c.nome)===norm(q.cliente.nome)))db.clients.push({id:uid(),...clone(q.cliente)});
   q.totale=calc(q).tot;q.modificato=new Date().toISOString();
   if(q.id){db.quotes[db.quotes.findIndex(x=>x.id===q.id)]=clone(q)}else{q.id=uid();db.quotes.push(clone(q))}
-  save();toast('Preventivo '+label(q)+' salvato');const id=q.id;go('list');if(andPrint)printQuote(db.quotes.find(x=>x.id===id))}
+  save();toast('Preventivo '+label(q)+' salvato');const id=q.id;go('list');const sq=db.quotes.find(x=>x.id===id);if(andPrint==='send')sendQuote(sq);else if(andPrint)printQuote(sq)}
 
 /* ---------- CATALOGO VOCI ---------- */
 function vItems(){const it=db.items.find(x=>x.id===editId)||{um:'pz',iva:db.settings.ivaDefault,sconto:0};
@@ -369,6 +371,55 @@ function printQuote(q){const s=db.settings,t=calc(q),sc=q.righe.some(r=>num(r.sc
   try{window.print()}catch(e){}
 }
 
+/* ---------- PDF E INVIO ---------- */
+const LIBS=['https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js','https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js'];
+const loadScript=src=>new Promise((ok,ko)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>ko(new Error('connessione assente'));document.head.appendChild(s)});
+async function pdfLib(){if(!window.jspdf)await loadScript(LIBS[0]);if(!window.jspdf.jsPDF.API.autoTable)await loadScript(LIBS[1]);return window.jspdf.jsPDF}
+const scadenza=q=>{const d=new Date(q.data+'T00:00');d.setDate(d.getDate()+num(q.validita));return d.toLocaleDateString('it-IT')};
+const pdfName=q=>`Preventivo_${q.numero}-${q.anno}_${(q.cliente.nome||'cliente').normalize('NFD').replace(/[^\w]+/g,'_').replace(/^_|_$/g,'')}.pdf`;
+async function makePdf(q){const J=await pdfLib(),doc=new J({unit:'mm',format:'a4'}),s=db.settings,c=q.cliente,t=calc(q),W=210,M=15;let y=M;
+  const txt=v=>String(v??'').replace(/[  ]/g,' ').replace(/m²/g,'mq').replace(/m³/g,'mc').replace(/²/g,'2').replace(/³/g,'3');
+  if(s.logo){try{const p=doc.getImageProperties(s.logo),hh=18,ww=Math.min(60,p.width*hh/p.height);doc.addImage(s.logo,'PNG',M,y,ww,hh);y+=hh+2}catch(e){}}
+  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text(txt(s.ragione),M,y+5);doc.setFont('helvetica','normal');doc.setFontSize(9);
+  let yl=y+10;[s.indirizzo,s.piva&&'P.IVA '+s.piva,[s.telefono,s.email].filter(Boolean).join(' - ')].filter(Boolean).forEach(l=>{doc.text(txt(l),M,yl);yl+=4.5});
+  const bx=115,bw=W-M-bx,cl=['Spett.le',c.nome,c.indirizzo,c.piva&&'P.IVA/CF '+c.piva,c.email].filter(Boolean),bh=cl.length*5+5;
+  doc.setDrawColor(150);doc.roundedRect(bx,y,bw,bh,2,2);cl.forEach((l,i)=>{doc.setFont('helvetica',i===1?'bold':'normal');doc.text(doc.splitTextToSize(txt(l),bw-6)[0],bx+3,y+6+i*5)});
+  y=Math.max(yl,y+bh)+8;doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(`Preventivo n. ${label(q)} del ${fdate(q.data)}`,M,y);y+=6;
+  doc.setFont('helvetica','normal');doc.setFontSize(10);if(q.oggetto){const o=doc.splitTextToSize(txt('Oggetto: '+q.oggetto),W-2*M);doc.text(o,M,y);y+=o.length*5}
+  const sc=q.righe.some(r=>num(r.sconto));
+  doc.autoTable({startY:y+1,margin:{left:M,right:M},styles:{fontSize:9,cellPadding:2},headStyles:{fillColor:[0,70,60]},
+    head:[['#','Descrizione','U.M.','Q.tà','Prezzo unit.',...(sc?['Sconto']:[]),'IVA','Importo']],
+    body:q.righe.map((r,i)=>[i+1,txt(r.desc),txt(r.um),num(r.qta).toLocaleString('it-IT'),txt(eur(num(r.prezzo))),...(sc?[num(r.sconto)?num(r.sconto)+'%':'']:[]),num(r.iva)+'%',txt(eur(rowNet(r)))]),
+    columnStyles:{1:{cellWidth:'auto'}},didParseCell:d=>{if(d.column.index>=3)d.cell.styles.halign='right'}});
+  y=doc.lastAutoTable.finalY+7;if(y>250){doc.addPage();y=M}
+  const tx=W-M,lx=118;doc.setFontSize(10);[['Imponibile',eur(t.imp)],...Object.entries(t.per).sort((a,b)=>b[0]-a[0]).map(([k,v])=>[`IVA ${k}% su ${eur(v.imp)}`,eur(v.iva)])].forEach(([a,b])=>{doc.text(txt(a),lx,y);doc.text(txt(b),tx,y,{align:'right'});y+=5});
+  doc.setLineWidth(.4);doc.line(lx,y-2,tx,y-2);y+=4;doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text('TOTALE',lx,y);doc.text(txt(eur(t.tot)),tx,y,{align:'right'});y+=11;
+  doc.setFont('helvetica','normal');doc.setFontSize(9.5);
+  const para=(a,b)=>{if(!b)return;const l=doc.splitTextToSize(txt(a+': '+b),W-2*M);if(y+l.length*4.5>282){doc.addPage();y=M}doc.text(l,M,y);y+=l.length*4.5+2};
+  para('Pagamento',q.pagamento&&(q.pagamento+(s.iban?' - IBAN '+s.iban:'')));para('Tempi',q.consegna);para('Note',q.note);para('Validità','il presente preventivo è valido fino al '+scadenza(q));
+  if(y>255){doc.addPage();y=M}y+=18;doc.setLineWidth(.2);doc.line(M,y,M+70,y);doc.line(W-M-70,y,W-M,y);doc.setFontSize(8);doc.text('Luogo e data',M,y+4);doc.text('Timbro e firma per accettazione',W-M-70,y+4);
+  return new File([doc.output('blob')],pdfName(q),{type:'application/pdf'})}
+const msgText=q=>{const s=db.settings;return `Gentile ${q.cliente.nome},\nle invio il preventivo n. ${label(q)} del ${fdate(q.data)}${q.oggetto?' per: '+q.oggetto:''}.\n\nTotale: ${eur(calc(q).tot).replace(/ /g,' ')} IVA inclusa\nValido fino al: ${scadenza(q)}\n\nResto a disposizione per qualsiasi chiarimento.\nCordiali saluti\n${s.ragione||''}${s.telefono?'\n'+s.telefono:''}`};
+const waPhone=p=>{let d=String(p||'').replace(/[^\d+]/g,'');if(d.startsWith('+'))d=d.slice(1);else if(d.startsWith('00'))d=d.slice(2);else if(d&&d.length<=10)d='39'+d;return d};
+function download(f){const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
+function markSent(q){q.inviato=new Date().toISOString();if(q.stato==='bozza')q.stato='inviato';save();if(view==='list')render()}
+function sendQuote(q){const canShare=!!(navigator.canShare&&navigator.canShare({files:[new File(['x'],'t.pdf',{type:'application/pdf'})]}));const c=q.cliente;
+  $('modal').innerHTML=`<div class="modal"><div class="card"><h3>Invia il preventivo ${esc(label(q))}</h3><p class="mut">A ${esc(c.nome)}${c.telefono?' · '+esc(c.telefono):''}${c.email?' · '+esc(c.email):''}</p>
+   <div class="sendg">${canShare?`<button class="btn pri" data-s="share">Invia il PDF<small>scegli WhatsApp, email o un'altra app</small></button>`:''}
+   <button class="btn wa" data-s="wa">WhatsApp<small>${c.telefono?'al numero del cliente':'scegli il contatto'}</small></button>
+   <button class="btn" data-s="mail">Email<small>${c.email?esc(c.email):'scrivi l\'indirizzo'}</small></button>
+   <button class="btn" data-s="pdf">Scarica il PDF<small>da allegare a mano</small></button></div>
+   <p class="mut" id="sendinfo">${canShare?'':'Con WhatsApp ed Email il PDF viene scaricato e si apre il messaggio già scritto: devi solo allegare il PDF.'}</p>
+   <div class="toolbar" style="justify-content:flex-end;margin:0"><button class="btn" id="m-no">Chiudi</button></div></div></div>`;
+  $('m-no').onclick=()=>$('modal').innerHTML='';
+  $('modal').querySelectorAll('[data-s]').forEach(b=>b.onclick=async()=>{const how=b.dataset.s;b.disabled=true;$('sendinfo').textContent='Preparo il PDF…';
+    try{const f=await makePdf(q),text=msgText(q);
+      if(how==='share'){try{await navigator.share({files:[f],title:'Preventivo '+label(q),text})}catch(e){if(e.name==='AbortError'){$('sendinfo').textContent='Invio annullato.';b.disabled=false;return}throw e}}
+      else{download(f);if(how==='wa')window.open(`https://wa.me/${waPhone(c.telefono)}?text=${encodeURIComponent(text)}`,'_blank');
+        if(how==='mail')location.href=`mailto:${encodeURIComponent(c.email||'').replace(/%40/g,'@')}?subject=${encodeURIComponent('Preventivo n. '+label(q)+(q.oggetto?' - '+q.oggetto:''))}&body=${encodeURIComponent(text)}`}
+      $('modal').innerHTML='';markSent(q);toast(how==='pdf'?'PDF scaricato: '+f.name:how==='share'?'Preventivo inviato':'PDF scaricato: allegalo al messaggio')}
+    catch(e){b.disabled=false;$('sendinfo').textContent='Non riesco a creare il PDF ('+(e.message||'errore')+'). Controlla la connessione e riprova.'}})}
+
 /* ---------- EVENTI ---------- */
 function demo(){const it=[['Manodopera operaio specializzato','ore',35,22,'Manodopera'],['Posa piastrelle pavimento','m²',28,10,'Lavori'],['Fornitura piastrelle gres 60x60','m²',32,10,'Materiali'],['Smaltimento macerie','a corpo',250,22,'Servizi'],['Sopralluogo tecnico','a corpo',80,22,'Servizi']];
   it.forEach(([d,u,p,v,c],k)=>db.items.push({id:uid(),codice:'',desc:d,um:u,prezzo:p,iva:v,sconto:0,categoria:c,uses:5-k}));
@@ -380,7 +431,7 @@ const acts={
   additem(e,b){const it=db.items.find(x=>x.id===b.dataset.id);it.uses=(it.uses||0)+1;save();const l=cur.righe.at(-1);const r=newRow(it);if(l&&!l.desc.trim()&&!num(l.prezzo))cur.righe[cur.righe.length-1]=r;else cur.righe.push(r);refresh();toast('Aggiunta: '+it.desc+' (controlla la quantità)')},
   memo(e,b,i){memo(i)},delrow(e,b,i){cur.righe.splice(i,1);if(!cur.righe.length)cur.righe.push(newRow());refresh()},
   up(e,b,i){if(i>0){[cur.righe[i-1],cur.righe[i]]=[cur.righe[i],cur.righe[i-1]];refresh()}},
-  savequote(){saveQuote(false)},preview(){printQuote(cur)},cancel(){ask('Uscire senza salvare le modifiche?',()=>go('list'),'Esci')},
+  savequote(){saveQuote(false)},savesend(){saveQuote('send')},send(e,b){sendQuote(db.quotes.find(x=>x.id===b.dataset.id))},preview(){printQuote(cur)},cancel(){ask('Uscire senza salvare le modifiche?',()=>go('list'),'Esci')},
   open(e,b){cur=clone(db.quotes.find(x=>x.id===b.dataset.id));go('edit')},
   dup(e,b){const y=new Date().getFullYear();cur={...clone(db.quotes.find(x=>x.id===b.dataset.id)),id:null,anno:y,numero:nextNumber(y),data:today(),stato:'bozza'};cur.righe.forEach(r=>r.id=uid());go('edit');toast('Copia creata: modificala e salvala')},
   print(e,b){printQuote(db.quotes.find(x=>x.id===b.dataset.id))},
