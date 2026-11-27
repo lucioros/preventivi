@@ -26,6 +26,7 @@ header{background:var(--g);color:#fff;position:sticky;top:0;z-index:5}
 .brand{font:700 20px "Inter Tight",sans-serif;margin-right:auto;color:#e6f5c8}
 .logo-row{display:flex;gap:16px;align-items:center;margin-bottom:14px;flex-wrap:wrap}.logo-prev{max-width:200px;max-height:80px;border:1px solid var(--line);border-radius:8px;padding:4px;background:#fff}.logo-prev.empty{padding:22px 16px;color:var(--mut);font-size:13px;background:transparent}
 summary{cursor:pointer;min-height:32px}
+.umc{display:inline-flex;align-items:center;gap:2px}.umc .btn.sm{min-height:34px;padding:4px 8px;border:0;background:transparent}
 .ghs{font:500 13px Inter,sans-serif;color:#cfe3d9;margin-left:8px;white-space:nowrap}.ghs.err{color:#ffb4a6}.ghs.ok{color:#e6f5c8}
 nav{display:flex;gap:4px;flex-wrap:wrap}
 nav button{background:transparent;color:#fff;border:0;padding:10px 12px;border-radius:8px;font:600 15px Inter,sans-serif;cursor:pointer;min-height:44px}
@@ -108,6 +109,8 @@ table.list{width:100%;border-collapse:collapse}
 const KEY='preventivi_facili_v1';
 const UM=['pz','ore','giorni','m','m²','m³','kg','lt','a corpo','forfait','km','conf.','mese'];
 const IVA=[22,10,5,4,0];
+const umList=()=>Array.isArray(db.settings.um)&&db.settings.um.length?db.settings.um:UM;
+const umOpts=sel=>opts(umList(),sel)+'<option value="__new">+ Nuova unità…</option>';
 const STATI={bozza:'Bozza',inviato:'Inviato',accettato:'Accettato',rifiutato:'Rifiutato'};
 const blank=()=>({settings:{ragione:'',piva:'',indirizzo:'',email:'',telefono:'',iban:'',ivaDefault:22,validita:30,pagamento:"50% all'accettazione, saldo a fine lavori",note:''},clients:[],items:[],quotes:[]});
 const load=()=>{try{const s=localStorage.getItem(KEY);if(s){const d=JSON.parse(s);const b=blank();return{...b,...d,settings:{...b.settings,...d.settings}}}}catch(e){}return blank()};
@@ -183,6 +186,10 @@ const calc=q=>{let imp=0,iva=0;const per={};for(const r of q.righe){const n=rowN
 const nextNumber=y=>{const ns=db.quotes.filter(q=>q.anno===y).map(q=>q.numero);return(ns.length?Math.max(...ns):0)+1};
 const label=q=>`${q.numero}/${q.anno}`;
 let tt;function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2600)}
+function askText(title,val,ok,okLabel='Salva'){$('modal').innerHTML=`<div class="modal"><div class="card"><h3>${esc(title)}</h3><input id="m-in" value="${esc(val)}" maxlength="20" placeholder="Es. mq, cad., notte"><div class="toolbar" style="justify-content:flex-end;margin:12px 0 0"><button class="btn" id="m-no">Annulla</button><button class="btn pri" id="m-ok">${esc(okLabel)}</button></div></div></div>`;
+  const i=$('m-in');i.focus();i.select();const done=()=>{const v=i.value.trim();if(!v)return toast('Scrivi l\'unità di misura');$('modal').innerHTML='';ok(v)};
+  $('m-ok').onclick=done;i.onkeydown=e=>{if(e.key==='Enter')done()};$('m-no').onclick=()=>{$('modal').innerHTML='';ok(null)}}
+function addUm(v){const l=[...umList()];const ex=l.find(x=>norm(x)===norm(v));if(ex)return ex;l.push(v);db.settings.um=l;save();return v}
 function ask(msg,ok,okLabel='Conferma',no,noLabel='Annulla'){$('modal').innerHTML=`<div class="modal"><div class="card"><p>${esc(msg)}</p><div class="toolbar" style="justify-content:flex-end;margin:0"><button class="btn" id="m-no">${esc(noLabel)}</button><button class="btn pri" id="m-ok">${esc(okLabel)}</button></div></div></div>`;$('m-no').onclick=()=>{$('modal').innerHTML='';no&&no()};$('m-ok').onclick=()=>{$('modal').innerHTML='';ok()}}
 const opts=(arr,sel,fmt=x=>x)=>{const a=arr.includes(sel)||sel===''||sel==null?arr:[sel,...arr];return a.map(x=>`<option value="${esc(x)}"${String(x)===String(sel)?' selected':''}>${esc(fmt(x))}</option>`).join('')};
 
@@ -246,7 +253,7 @@ function vEdit(){const q=cur,c=q.cliente;
 function rowHtml(r,i){const inCat=!!findItem(r.desc);const io=IVA.map(String);
   return `<div class="row" data-i="${i}">
   <div class="desc"><label>Descrizione voce ${i+1}</label><input list="cat-list" data-r="desc" value="${esc(r.desc)}" placeholder="Scrivi o scegli una delle tue voci" autocomplete="off"></div>
-  <div><label>Unità</label><select data-r="um">${opts(UM,r.um)}</select></div>
+  <div><label>Unità</label><select data-r="um">${umOpts(r.um)}</select></div>
   <div><label>Quantità</label><input inputmode="decimal" data-r="qta" value="${esc(r.qta)}"></div>
   <div><label>Prezzo unit. €</label><input inputmode="decimal" data-r="prezzo" value="${esc(r.prezzo)}" placeholder="0,00"></div>
   <div><label>Sconto %</label><input inputmode="decimal" data-r="sconto" value="${esc(r.sconto)}"></div>
@@ -287,12 +294,15 @@ function vItems(){const it=db.items.find(x=>x.id===editId)||{um:'pz',iva:db.sett
    <div class="span2"><label for="i_desc">Descrizione *</label><input id="i_desc" value="${esc(it.desc)}" placeholder="Es. Posa piastrelle pavimento"></div>
    <div><label for="i_codice">Codice (facoltativo)</label><input id="i_codice" value="${esc(it.codice)}"></div>
    <div><label for="i_categoria">Categoria</label><input id="i_categoria" list="cat-names" value="${esc(it.categoria)}" placeholder="Es. Manodopera"></div>
-   <div><label for="i_um">Unità di misura</label><select id="i_um">${opts(UM,it.um)}</select></div>
+   <div><label for="i_um">Unità di misura</label><select id="i_um">${umOpts(it.um)}</select></div>
    <div><label for="i_prezzo">Prezzo unitario €</label><input id="i_prezzo" inputmode="decimal" value="${esc(it.prezzo)}"></div>
    <div><label for="i_iva">IVA</label><select id="i_iva">${opts(IVA.map(String),String(num(it.iva)),x=>x+'%')}</select></div>
    <div><label for="i_sconto">Sconto abituale %</label><input id="i_sconto" inputmode="decimal" value="${esc(it.sconto)}"></div>
   </div><datalist id="cat-names">${[...new Set(db.items.map(x=>x.categoria).filter(Boolean))].map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
   <div class="toolbar" style="margin:14px 0 0"><button class="btn pri" data-a="saveitem">${editId?'Salva modifiche':'+ Aggiungi voce'}</button>${editId?'<button class="btn" data-a="canceledit">Annulla</button>':''}</div></div>
+  <div class="card"><h3>Unità di misura</h3><p class="mut">Tocca un'unità per rinominarla. Rinominandola si aggiornano anche le voci salvate che la usano.</p>
+   <div class="chips">${umList().map((u,k)=>`<span class="umc"><button class="chip" data-a="umedit" data-k="${k}">${esc(u)} <small>${db.items.filter(x=>x.um===u).length||''}</small></button><button class="btn sm del" data-a="umdel" data-k="${k}" aria-label="Elimina ${esc(u)}">✕</button></span>`).join('')}</div>
+   <div class="toolbar" style="margin:0"><button class="btn" data-a="umadd">+ Nuova unità di misura</button><button class="btn" data-a="umreset">Ripristina elenco iniziale</button></div></div>
   <div class="card"><div class="toolbar"><input id="is" placeholder="Cerca tra le voci"></div>
   <table class="list stack"><thead><tr><th>Descrizione</th><th>Categoria</th><th>U.M.</th><th class="num">Prezzo</th><th class="num">IVA</th><th class="num">Usata</th><th></th></tr></thead><tbody id="itb"></tbody></table></div>`}
 function itemRows(){const s=norm($('is')?.value);
@@ -392,6 +402,13 @@ const acts={
     if(!v.d||!v.o||!v.r||!v.t)return toast('Compila tutti i campi per creare il link');
     $('a_out').value=APP_URL+'#attiva='+b64e(JSON.stringify(v)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');toast('Link creato: premi Copia link')},
   copylink(){const t=$('a_out').value;if(!t)return toast('Crea prima il link');navigator.clipboard?.writeText(t).then(()=>toast('Link copiato'),()=>{$('a_out').select();toast('Seleziona e copia a mano')})},
+  umadd(){askText('Nuova unità di misura','',v=>{if(!v)return;addUm(v);render();toast('Unità aggiunta: '+v)},'Aggiungi')},
+  umedit(e,b){const l=[...umList()],k=+b.dataset.k,old=l[k];askText('Rinomina unità di misura',old,v=>{if(!v||v===old)return;
+    if(l.some((x,j)=>j!==k&&norm(x)===norm(v)))return toast('Questa unità esiste già');l[k]=v;db.settings.um=l;let n=0;db.items.forEach(x=>{if(x.um===old){x.um=v;n++}});
+    if(cur)cur.righe.forEach(r=>{if(r.um===old)r.um=v});save();render();toast(n?`Rinominata: aggiornate ${n} voci salvate`:'Unità rinominata')})},
+  umdel(e,b){const l=[...umList()],k=+b.dataset.k,u=l[k],n=db.items.filter(x=>x.um===u).length;if(l.length<=1)return toast('Deve restare almeno un\'unità');
+    ask(n?`"${u}" è usata da ${n} voci salvate: le voci la mantengono, ma non sarà più tra le scelte. Eliminarla?`:`Eliminare l'unità "${u}"?`,()=>{l.splice(k,1);db.settings.um=l;save();render()},'Elimina')},
+  umreset(){ask('Ripristinare l\'elenco iniziale delle unità di misura? Le voci salvate non cambiano.',()=>{delete db.settings.um;save();render()},'Ripristina')},
   nologo(){delete db.settings.logo;save();render()},
   async ghsync(){try{await ghPull();render();toast('Dati ricaricati da GitHub')}catch(e){toast('GitHub: '+e.message)}},
   ghoff(){ask('Scollegare GitHub da questo browser? I dati su GitHub restano.',()=>{gh={};ghSha=null;try{localStorage.removeItem(GHK)}catch(e){}render();ghStatus('')},'Scollega')},
@@ -404,9 +421,11 @@ document.addEventListener('input',e=>{const t=e.target,row=t.closest('.row');
   else if(t.dataset.s){db.settings[t.dataset.s]=t.dataset.s==='ivaDefault'||t.dataset.s==='validita'?num(t.value):t.value;save()}
   else if(t.dataset.q)cur[t.dataset.q]=t.value;
   else if(t.dataset.c)setCli(t.dataset.c,t.value);
-  else if(row&&t.dataset.r){const i=+row.dataset.i,r=cur.righe[i];r[t.dataset.r]=t.value;row.querySelector('.rt').textContent=eur(rowNet(r));
+  else if(row&&t.dataset.r){if(t.value==='__new')return;const i=+row.dataset.i,r=cur.righe[i];r[t.dataset.r]=t.value;row.querySelector('.rt').textContent=eur(rowNet(r));
     if(t.dataset.r==='desc'){if(findItem(t.value)&&t.tagName==='INPUT'&&e.inputType!=='insertText'&&e.inputType!=='deleteContentBackward'){pickItem(i,t.value);return}row.querySelector('.memo').textContent=findItem(t.value)?'✓ Salvata':'⭐ Memorizza'}totals()}});
-document.addEventListener('change',e=>{const t=e.target;if(t.id==='s_logo'){loadLogo(t.files[0]);return}
+document.addEventListener('change',e=>{const t=e.target;
+  if(t.tagName==='SELECT'&&t.value==='__new'){const row=t.closest('.row'),prev=row?cur.righe[+row.dataset.i].um:umList()[0];
+    askText('Nuova unità di misura','',v=>{if(!v){t.value=prev;return}const u=addUm(v);if(row){cur.righe[+row.dataset.i].um=u;refresh()}else{t.innerHTML=umOpts(u)}toast('Unità aggiunta: '+u)},'Aggiungi');return}if(t.id==='s_logo'){loadLogo(t.files[0]);return}
   if(t.id==='qf'){qf=t.value;listRows()}
   else if(t.dataset.stato){const q=db.quotes.find(x=>x.id===t.dataset.stato);q.stato=t.value;t.className='badge s-'+t.value;save();render()}
   else if(t.dataset.r==='desc'){const row=t.closest('.row');pickItem(+row.dataset.i,t.value)}});
