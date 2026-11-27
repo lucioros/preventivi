@@ -284,7 +284,7 @@ function saveQuote(andPrint){const q=cur;
   q.righe.forEach(r=>{r.qta=num(r.qta);r.prezzo=num(r.prezzo);r.sconto=num(r.sconto);r.iva=num(r.iva)});
   q.numero=parseInt(q.numero)||1;q.anno=new Date(q.data+'T00:00').getFullYear()||q.anno;
   if(db.quotes.some(x=>x.id!==q.id&&x.anno===q.anno&&x.numero===q.numero)){q.numero=nextNumber(q.anno);toast('Numero già usato: assegnato il '+label(q))}
-  if(!db.clients.some(c=>norm(c.nome)===norm(q.cliente.nome)))db.clients.push({id:uid(),...clone(q.cliente)});
+  {const rc=db.clients.find(c=>norm(c.nome)===norm(q.cliente.nome));if(!rc)db.clients.push({id:uid(),...clone(q.cliente)});else ['piva','indirizzo','email','telefono'].forEach(k=>{if(q.cliente[k])rc[k]=q.cliente[k]})}
   q.totale=calc(q).tot;q.modificato=new Date().toISOString();
   if(q.id){db.quotes[db.quotes.findIndex(x=>x.id===q.id)]=clone(q)}else{q.id=uid();db.quotes.push(clone(q))}
   save();toast('Preventivo '+label(q)+' salvato');const id=q.id;go('list');const sq=db.quotes.find(x=>x.id===id);if(andPrint==='send')sendQuote(sq);else if(andPrint)printQuote(sq)}
@@ -403,16 +403,20 @@ const msgText=q=>{const s=db.settings;return `Gentile ${q.cliente.nome},\nle inv
 const waPhone=p=>{let d=String(p||'').replace(/[^\d+]/g,'');if(d.startsWith('+'))d=d.slice(1);else if(d.startsWith('00'))d=d.slice(2);else if(d&&d.length<=10)d='39'+d;return d};
 function download(f){const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
 function markSent(q){q.inviato=new Date().toISOString();if(q.stato==='bozza')q.stato='inviato';save();if(view==='list')render()}
-function sendQuote(q){const canShare=!!(navigator.canShare&&navigator.canShare({files:[new File(['x'],'t.pdf',{type:'application/pdf'})]}));const c=q.cliente;
-  $('modal').innerHTML=`<div class="modal"><div class="card"><h3>Invia il preventivo ${esc(label(q))}</h3><p class="mut">A ${esc(c.nome)}${c.telefono?' · '+esc(c.telefono):''}${c.email?' · '+esc(c.email):''}</p>
+function freshContact(q){const rc=db.clients.find(c=>norm(c.nome)===norm(q.cliente.nome));if(rc)['piva','indirizzo','email','telefono'].forEach(k=>{if(rc[k])q.cliente[k]=rc[k]})}
+function sendQuote(q){freshContact(q);const canShare=!!(navigator.canShare&&navigator.canShare({files:[new File(['x'],'t.pdf',{type:'application/pdf'})]}));const c=q.cliente;
+  $('modal').innerHTML=`<div class="modal"><div class="card"><h3>Invia il preventivo ${esc(label(q))}</h3><p class="mut" style="margin-bottom:8px">A <b>${esc(c.nome)}</b>. Controlla numero ed email prima di inviare:</p>
+   <div class="grid"><div><label for="sd_tel">Telefono / WhatsApp</label><input id="sd_tel" type="tel" value="${esc(c.telefono)}" placeholder="Es. 333 1234567"></div><div><label for="sd_mail">Email</label><input id="sd_mail" type="email" value="${esc(c.email)}"></div></div>
    <div class="sendg">${canShare?`<button class="btn pri" data-s="share">Invia il PDF<small>scegli WhatsApp, email o un'altra app</small></button>`:''}
-   <button class="btn wa" data-s="wa">WhatsApp<small>${c.telefono?'al numero del cliente':'scegli il contatto'}</small></button>
-   <button class="btn" data-s="mail">Email<small>${c.email?esc(c.email):'scrivi l\'indirizzo'}</small></button>
+   <button class="btn wa" data-s="wa">WhatsApp<small>al numero qui sopra (se vuoto, scegli il contatto)</small></button>
+   <button class="btn" data-s="mail">Email<small>all'indirizzo qui sopra</small></button>
    <button class="btn" data-s="pdf">Scarica il PDF<small>da allegare a mano</small></button></div>
    <p class="mut" id="sendinfo">${canShare?'':'Con WhatsApp ed Email il PDF viene scaricato e si apre il messaggio già scritto: devi solo allegare il PDF.'}</p>
    <div class="toolbar" style="justify-content:flex-end;margin:0"><button class="btn" id="m-no">Chiudi</button></div></div></div>`;
   $('m-no').onclick=()=>$('modal').innerHTML='';
-  $('modal').querySelectorAll('[data-s]').forEach(b=>b.onclick=async()=>{const how=b.dataset.s;b.disabled=true;$('sendinfo').textContent='Preparo il PDF…';
+  $('modal').querySelectorAll('[data-s]').forEach(b=>b.onclick=async()=>{const how=b.dataset.s;
+    const tel=$('sd_tel').value.trim(),mail=$('sd_mail').value.trim();if(tel!==(c.telefono||'')||mail!==(c.email||'')){c.telefono=tel;c.email=mail;const rc=db.clients.find(x=>norm(x.nome)===norm(c.nome));if(rc){rc.telefono=tel;rc.email=mail}save()}
+    b.disabled=true;$('sendinfo').textContent='Preparo il PDF…';
     try{const f=await makePdf(q),text=msgText(q);
       if(how==='share'){try{await navigator.share({files:[f],title:'Preventivo '+label(q),text})}catch(e){if(e.name==='AbortError'){$('sendinfo').textContent='Invio annullato.';b.disabled=false;return}throw e}}
       else{download(f);if(how==='wa')window.open(`https://wa.me/${waPhone(c.telefono)}?text=${encodeURIComponent(text)}`,'_blank');
@@ -440,7 +444,8 @@ const acts={
     const ex=db.items.find(x=>x.id===editId);if(ex)Object.assign(ex,v);else{if(findItem(d))return toast('Questa voce esiste già');db.items.push({id:uid(),uses:0,...v})}editId=null;save();render();toast('Voce salvata')},
   edititem(e,b){editId=b.dataset.id;render();scrollTo(0,0)},canceledit(){editId=null;render()},
   delitem(e,b){const it=db.items.find(x=>x.id===b.dataset.id);ask(`Eliminare la voce "${it.desc}"? I preventivi già fatti non cambiano.`,()=>{db.items=db.items.filter(x=>x!==it);save();render()},'Elimina')},
-  savecli(){const v={};CF.forEach(([k])=>v[k]=$('k_'+k).value.trim());if(!v.nome)return toast('Scrivi il nome');const ex=db.clients.find(x=>x.id===editId);if(ex)Object.assign(ex,v);else db.clients.push({id:uid(),...v});editId=null;save();render();toast('Cliente salvato')},
+  savecli(){const v={};CF.forEach(([k])=>v[k]=$('k_'+k).value.trim());if(!v.nome)return toast('Scrivi il nome');const ex=db.clients.find(x=>x.id===editId);let n=0;if(ex){const old=ex.nome;db.quotes.forEach(q=>{if(norm(q.cliente.nome)===norm(old)&&q.stato!=='accettato'&&q.stato!=='rifiutato'){q.cliente={...q.cliente,...v};n++}});Object.assign(ex,v)}else db.clients.push({id:uid(),...v});
+    editId=null;save();render();toast(n?`Cliente salvato: aggiornati anche ${n} preventivi aperti`:'Cliente salvato')},
   editcli(e,b){editId=b.dataset.id;render();scrollTo(0,0)},
   delcli(e,b){const c=db.clients.find(x=>x.id===b.dataset.id);ask(`Eliminare ${c.nome} dalla rubrica? I preventivi restano.`,()=>{db.clients=db.clients.filter(x=>x!==c);save();render()},'Elimina')},
   quotecli(e,b){const c=db.clients.find(x=>x.id===b.dataset.id);newQuote();Object.assign(cur.cliente,{nome:c.nome,piva:c.piva,indirizzo:c.indirizzo,email:c.email,telefono:c.telefono});render()},
