@@ -28,6 +28,7 @@ header{background:var(--g);color:#fff;position:sticky;top:0;z-index:5}
 summary{cursor:pointer;min-height:32px}
 .umc{display:inline-flex;align-items:center;gap:2px}.umc .btn.sm{min-height:34px;padding:4px 8px;border:0;background:transparent}
 .sendg{display:grid;gap:8px;margin:12px 0}.sendg .btn{text-align:left;display:flex;flex-direction:column;padding:12px 16px}.sendg small{font-weight:400;font-size:13px;opacity:.8}
+.btn.linkish{background:transparent;border:0;text-decoration:underline;font-weight:500;font-size:14px;color:var(--mut);padding:4px 16px;min-height:0;text-align:left}
 .btn.wa{background:#1f8f4e;color:#fff;border-color:#1f8f4e}
 .ghs{font:500 13px Inter,sans-serif;color:#cfe3d9;margin-left:8px;white-space:nowrap}.ghs.err{color:#ffb4a6}.ghs.ok{color:#e6f5c8}
 nav{display:flex;gap:4px;flex-wrap:wrap}
@@ -404,24 +405,39 @@ const waPhone=p=>{let d=String(p||'').replace(/[^\d+]/g,'');if(d.startsWith('+')
 function download(f){const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
 function markSent(q){q.inviato=new Date().toISOString();if(q.stato==='bozza')q.stato='inviato';save();if(view==='list')render()}
 function freshContact(q){const rc=db.clients.find(c=>norm(c.nome)===norm(q.cliente.nome));if(rc)['piva','indirizzo','email','telefono'].forEach(k=>{if(rc[k])q.cliente[k]=rc[k]})}
-function sendQuote(q){freshContact(q);const canShare=!!(navigator.canShare&&navigator.canShare({files:[new File(['x'],'t.pdf',{type:'application/pdf'})]}));const c=q.cliente;
-  $('modal').innerHTML=`<div class="modal"><div class="card"><h3>Invia il preventivo ${esc(label(q))}</h3><p class="mut" style="margin-bottom:8px">A <b>${esc(c.nome)}</b>. Controlla numero ed email prima di inviare:</p>
+function sendQuote(q){freshContact(q);const c=q.cliente,s=db.settings;
+  const canShare=!!(navigator.canShare&&navigator.canShare({files:[new File(['x'],'t.pdf',{type:'application/pdf'})]}));
+  $('modal').innerHTML=`<div class="modal"><div class="card send"><h3>Invia il preventivo ${esc(label(q))}</h3>
+   <p class="mut" style="margin-bottom:8px">A <b>${esc(c.nome)}</b>. Controlla numero ed email:</p>
    <div class="grid"><div><label for="sd_tel">Telefono / WhatsApp</label><input id="sd_tel" type="tel" value="${esc(c.telefono)}" placeholder="Es. 333 1234567"></div><div><label for="sd_mail">Email</label><input id="sd_mail" type="email" value="${esc(c.email)}"></div></div>
-   <div class="sendg">${canShare?`<button class="btn pri" data-s="share">Invia il PDF<small>scegli WhatsApp, email o un'altra app</small></button>`:''}
-   <button class="btn wa" data-s="wa">WhatsApp<small>al numero qui sopra (se vuoto, scegli il contatto)</small></button>
-   <button class="btn" data-s="mail">Email<small>all'indirizzo qui sopra</small></button>
-   <button class="btn" data-s="pdf">Scarica il PDF<small>da allegare a mano</small></button></div>
-   <p class="mut" id="sendinfo">${canShare?'':'Con WhatsApp ed Email il PDF viene scaricato e si apre il messaggio già scritto: devi solo allegare il PDF.'}</p>
+   <div class="sendg">${canShare?`
+    <button class="btn wa" data-s="share-wa">Invia il PDF su WhatsApp<small>nel menu scegli WhatsApp, poi la chat del cliente</small></button>
+    <button class="btn linkish" data-s="openchat">Il cliente non è nella tua rubrica del telefono? Tocca qui prima: si apre la sua chat. Poi torna qui e premi il pulsante verde.</button>
+    <button class="btn" data-s="share-mail">Invia il PDF per email<small>nel menu scegli la tua app di posta</small></button>`:`
+    <button class="btn wa" data-s="wa">WhatsApp<small>scarica il PDF e apre la chat del cliente</small></button>
+    <button class="btn" data-s="mail">Email<small>scarica il PDF e apre un'email già scritta</small></button>`}
+    <button class="btn" data-s="pdf">Scarica solo il PDF</button></div>
+   <p class="mut" id="sendinfo"></p>
    <div class="toolbar" style="justify-content:flex-end;margin:0"><button class="btn" id="m-no">Chiudi</button></div></div></div>`;
   $('m-no').onclick=()=>$('modal').innerHTML='';
-  $('modal').querySelectorAll('[data-s]').forEach(b=>b.onclick=async()=>{const how=b.dataset.s;
-    const tel=$('sd_tel').value.trim(),mail=$('sd_mail').value.trim();if(tel!==(c.telefono||'')||mail!==(c.email||'')){c.telefono=tel;c.email=mail;const rc=db.clients.find(x=>norm(x.nome)===norm(c.nome));if(rc){rc.telefono=tel;rc.email=mail}save()}
+  const contact=()=>{const tel=$('sd_tel').value.trim(),mail=$('sd_mail').value.trim();if(tel!==(c.telefono||'')||mail!==(c.email||'')){c.telefono=tel;c.email=mail;const rc=db.clients.find(x=>norm(x.nome)===norm(c.nome));if(rc){rc.telefono=tel;rc.email=mail}save()}};
+  const waUrl=t=>`https://wa.me/${waPhone(c.telefono)}?text=${encodeURIComponent(t)}`;
+  const after=(f,where)=>{markSent(q);$('modal').querySelector('.card').innerHTML=`<h3>Ultimo passo: allega il PDF</h3>
+    <p>✓ Il PDF è stato scaricato: <b>${esc(f.name)}</b> (cartella <b>Download</b>).</p>
+    <p>${where==='wa'?'Nella chat WhatsApp che si è aperta clicca la <b>graffetta 📎</b> (o il <b>+</b>), scegli <b>Documento</b> e seleziona il file. Oppure trascina il file dentro la chat. Poi premi Invia.':'Nell\'email che si è aperta clicca <b>Allega</b> (la graffetta 📎) e seleziona il file. Oppure trascina il file dentro l\'email. Poi premi Invia.'}</p>
+    <p class="mut">Da computer non è possibile allegare il file in automatico: è un limite di WhatsApp e dei programmi di posta. Dal telefono invece l'allegato è automatico.</p>
+    <div class="toolbar" style="justify-content:flex-end;margin:0"><button class="btn pri" id="m-done">Fatto</button></div>`;$('m-done').onclick=()=>$('modal').innerHTML=''};
+  $('modal').querySelectorAll('[data-s]').forEach(b=>b.onclick=async()=>{const how=b.dataset.s;contact();
+    if(how==='openchat'){if(!waPhone(c.telefono))return toast('Scrivi prima il numero del cliente');window.open(waUrl(`Buongiorno ${c.nome}, ${s.ragione?'sono '+s.ragione+'. ':''}Le invio qui di seguito il preventivo n. ${label(q)}.`),'_blank');$('sendinfo').innerHTML='Chat aperta. Ora torna qui e premi <b>Invia il PDF su WhatsApp</b>: troverai il cliente in cima alle chat recenti.';return}
     b.disabled=true;$('sendinfo').textContent='Preparo il PDF…';
     try{const f=await makePdf(q),text=msgText(q);
-      if(how==='share'){try{await navigator.share({files:[f],title:'Preventivo '+label(q),text})}catch(e){if(e.name==='AbortError'){$('sendinfo').textContent='Invio annullato.';b.disabled=false;return}throw e}}
-      else{download(f);if(how==='wa')window.open(`https://wa.me/${waPhone(c.telefono)}?text=${encodeURIComponent(text)}`,'_blank');
-        if(how==='mail')location.href=`mailto:${encodeURIComponent(c.email||'').replace(/%40/g,'@')}?subject=${encodeURIComponent('Preventivo n. '+label(q)+(q.oggetto?' - '+q.oggetto:''))}&body=${encodeURIComponent(text)}`}
-      $('modal').innerHTML='';markSent(q);toast(how==='pdf'?'PDF scaricato: '+f.name:how==='share'?'Preventivo inviato':'PDF scaricato: allegalo al messaggio')}
+      if(how.startsWith('share')){try{await navigator.share(how==='share-mail'?{files:[f],title:'Preventivo n. '+label(q),text}:{files:[f],text})}catch(e){if(e.name==='AbortError'){$('sendinfo').textContent='Invio annullato.';b.disabled=false;return}throw e}
+        $('modal').innerHTML='';markSent(q);toast('Preventivo condiviso con il PDF allegato');return}
+      download(f);
+      if(how==='pdf'){$('modal').innerHTML='';toast('PDF scaricato: '+f.name);return}
+      if(how==='wa')window.open(waUrl(text),'_blank');
+      if(how==='mail')location.href=`mailto:${encodeURIComponent(c.email||'').replace(/%40/g,'@')}?subject=${encodeURIComponent('Preventivo n. '+label(q)+(q.oggetto?' - '+q.oggetto:''))}&body=${encodeURIComponent(text+'\n\n(in allegato il PDF del preventivo)')}`;
+      after(f,how)}
     catch(e){b.disabled=false;$('sendinfo').textContent='Non riesco a creare il PDF ('+(e.message||'errore')+'). Controlla la connessione e riprova.'}})}
 
 /* ---------- EVENTI ---------- */
